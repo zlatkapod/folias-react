@@ -1,0 +1,43 @@
+{
+    // Automatically format code when you save a file
+    "format_on_save": true,
+
+    // Show inline documentation and type hints
+    "show_copilot_suggestions": true,
+
+    // Configure which file types to ignore
+    "ignore": [
+        "node_modules",
+        "build",
+        "dist",
+        ".git",
+        "*.log"
+    ],
+
+    // Set the default tab size (in spaces)
+    "tab_size": 2,
+
+    // Use spaces instead of tabs
+    "insert_spaces": true,
+
+    // Trim trailing whitespace when saving
+    "trim_trailing_whitespace": true,
+
+    // Add a newline at the end of files
+    "insert_final_newline": true,
+
+    // Enable automatic bracket and quote completion
+    "auto_closing": true,
+
+    // Show line numbers in the editor
+    "line_numbers": true,
+
+    // Enable word wrap
+    "word_wrap": true,
+
+    // Enable minimap (code overview on the right)
+    "minimap": true,
+
+    // Enable smooth scrolling
+    "smooth_scrolling": true
+}

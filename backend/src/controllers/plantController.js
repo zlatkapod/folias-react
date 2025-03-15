@@ -1,147 +1,147 @@
-const Plant = require('../models/plantModel');
+const Plant = require('../models/Plant');
+const asyncHandler = require('../middleware/asyncHandler');
+
+// @desc    Get all plants
+// @route   GET /api/plants
+// @access  Public
+exports.getPlants = asyncHandler(async (req, res) => {
+  const plants = await Plant.find();
+  
+  res.status(200).json({
+    success: true,
+    count: plants.length,
+    data: plants
+  });
+});
+
+// @desc    Get single plant
+// @route   GET /api/plants/:id
+// @access  Public
+exports.getPlant = asyncHandler(async (req, res) => {
+  const plant = await Plant.findById(req.params.id);
+  
+  if (!plant) {
+    return res.status(404).json({
+      success: false,
+      message: `Plant with id ${req.params.id} not found`
+    });
+  }
+  
+  res.status(200).json({
+    success: true,
+    data: plant
+  });
+});
+
+// @desc    Create new plant
+// @route   POST /api/plants
+// @access  Public
+exports.createPlant = asyncHandler(async (req, res) => {
+  const plant = await Plant.create(req.body);
+  
+  res.status(201).json({
+    success: true,
+    data: plant
+  });
+});
+
+// @desc    Update plant
+// @route   PUT /api/plants/:id
+// @access  Public
+exports.updatePlant = asyncHandler(async (req, res) => {
+  let plant = await Plant.findById(req.params.id);
+  
+  if (!plant) {
+    return res.status(404).json({
+      success: false,
+      message: `Plant with id ${req.params.id} not found`
+    });
+  }
+  
+  plant = await Plant.findByIdAndUpdate(req.params.id, req.body, {
+    new: true,
+    runValidators: true
+  });
+  
+  res.status(200).json({
+    success: true,
+    data: plant
+  });
+});
+
+// @desc    Delete plant
+// @route   DELETE /api/plants/:id
+// @access  Public
+exports.deletePlant = asyncHandler(async (req, res) => {
+  const plant = await Plant.findById(req.params.id);
+  
+  if (!plant) {
+    return res.status(404).json({
+      success: false,
+      message: `Plant with id ${req.params.id} not found`
+    });
+  }
+  
+  await plant.deleteOne();
+  
+  res.status(200).json({
+    success: true,
+    data: {}
+  });
+});
+
+// @desc    Get plants due for watering
+// @route   GET /api/plants/to-water
+// @access  Public
+exports.getPlantsToWater = asyncHandler(async (req, res) => {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const plants = await Plant.find({
+    nextWatering: { $lte: today }
+  });
+
+  res.status(200).json({
+    success: true,
+    count: plants.length,
+    data: plants
+  });
+});
+
+// @desc    Get plants by room
+// @route   GET /api/plants/by-room/:room
+// @access  Public
+exports.getPlantsByRoom = asyncHandler(async (req, res) => {
+  const plants = await Plant.find({
+    room: req.params.room
+  });
+
+  res.status(200).json({
+    success: true,
+    count: plants.length,
+    data: plants
+  });
+});
+
+// @desc    Get plants by health status
+// @route   GET /api/plants/by-health/:status
+// @access  Public
+exports.getPlantsByHealth = asyncHandler(async (req, res) => {
+  const plants = await Plant.find({
+    health: req.params.status
+  });
+
+  res.status(200).json({
+    success: true,
+    count: plants.length,
+    data: plants
+  });
+});
 
 // Get all plants for current user
 exports.getAllPlants = async (req, res, next) => {
   try {
     const plants = await Plant.find({ owner: req.user.id });
-
-    res.status(200).json({
-      status: 'success',
-      results: plants.length,
-      data: {
-        plants,
-      },
-    });
-  } catch (err) {
-    next(err);
-  }
-};
-
-// Get plant by ID
-exports.getPlant = async (req, res, next) => {
-  try {
-    const plant = await Plant.findOne({
-      _id: req.params.id,
-      owner: req.user.id,
-    }).populate('careLogs');
-
-    if (!plant) {
-      return res.status(404).json({
-        status: 'fail',
-        message: 'Plant not found',
-      });
-    }
-
-    res.status(200).json({
-      status: 'success',
-      data: {
-        plant,
-      },
-    });
-  } catch (err) {
-    next(err);
-  }
-};
-
-// Create a new plant
-exports.createPlant = async (req, res, next) => {
-  try {
-    // Add user to request body
-    req.body.owner = req.user.id;
-
-    // Format dates if provided
-    if (req.body.nextWatering) {
-      req.body.nextWatering = new Date(req.body.nextWatering);
-    }
-    if (req.body.acquiredDate) {
-      req.body.acquiredDate = new Date(req.body.acquiredDate);
-    }
-
-    const newPlant = await Plant.create(req.body);
-
-    res.status(201).json({
-      status: 'success',
-      data: {
-        plant: newPlant,
-      },
-    });
-  } catch (err) {
-    next(err);
-  }
-};
-
-// Update plant
-exports.updatePlant = async (req, res, next) => {
-  try {
-    // Format dates if provided
-    if (req.body.nextWatering) {
-      req.body.nextWatering = new Date(req.body.nextWatering);
-    }
-    if (req.body.acquiredDate) {
-      req.body.acquiredDate = new Date(req.body.acquiredDate);
-    }
-
-    const updatedPlant = await Plant.findOneAndUpdate(
-      { _id: req.params.id, owner: req.user.id },
-      req.body,
-      {
-        new: true,
-        runValidators: true,
-      }
-    );
-
-    if (!updatedPlant) {
-      return res.status(404).json({
-        status: 'fail',
-        message: 'Plant not found',
-      });
-    }
-
-    res.status(200).json({
-      status: 'success',
-      data: {
-        plant: updatedPlant,
-      },
-    });
-  } catch (err) {
-    next(err);
-  }
-};
-
-// Delete plant
-exports.deletePlant = async (req, res, next) => {
-  try {
-    const plant = await Plant.findOneAndDelete({
-      _id: req.params.id,
-      owner: req.user.id,
-    });
-
-    if (!plant) {
-      return res.status(404).json({
-        status: 'fail',
-        message: 'Plant not found',
-      });
-    }
-
-    res.status(204).json({
-      status: 'success',
-      data: null,
-    });
-  } catch (err) {
-    next(err);
-  }
-};
-
-// Get plants due for watering
-exports.getPlantsToWater = async (req, res, next) => {
-  try {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    const plants = await Plant.find({
-      owner: req.user.id,
-      nextWatering: { $lte: today },
-    });
 
     res.status(200).json({
       status: 'success',

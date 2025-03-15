@@ -116,6 +116,18 @@ function PlantsList({ plants: initialPlants, onUpdatePlant }) {
     }
   };
 
+  // Handle plant deletion
+  const handleDeletePlant = (plantId) => {
+    const updatedPlants = plants.filter(p => p.id !== plantId);
+    setPlants(updatedPlants);
+    setShowDetails(false);
+    
+    // If parent component provided update handler, call it with null to indicate deletion
+    if (onUpdatePlant) {
+      onUpdatePlant({ id: plantId, isDeleted: true });
+    }
+  };
+
   // Handle care log save
   const handleSaveLog = async (log, plantUpdates) => {
     setIsLoading(true);
@@ -150,6 +162,24 @@ function PlantsList({ plants: initialPlants, onUpdatePlant }) {
       setError('Failed to save care log. Please try again.');
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  // Add state for the App component
+  const handleAddPlantClick = () => {
+    // This should redirect to the Add Plant form
+    // Since we're using the activeView state in the parent App component,
+    // we need to communicate this to the parent
+    if (window.parent && window.parent.setActiveView) {
+      window.parent.setActiveView('addPlant');
+    } else {
+      // Fallback - this is a workaround since we don't have direct access to setActiveView
+      // The App component stores setActiveView in window object 
+      if (window.setActiveView) {
+        window.setActiveView('addPlant');
+      } else {
+        console.warn('Cannot navigate to Add Plant view - setActiveView not available');
+      }
     }
   };
   
@@ -200,6 +230,17 @@ function PlantsList({ plants: initialPlants, onUpdatePlant }) {
       
       {sortedPlants.length > 0 ? (
         <div className="plants-list">
+          {/* Add New Plant Card - First Item */}
+          <div 
+            className="plant-card add-plant-card"
+            onClick={handleAddPlantClick}
+          >
+            <div className="add-plant-icon">
+              <span className="plus-icon">+</span>
+            </div>
+          </div>
+          
+          {/* Existing Plant Cards */}
           {sortedPlants.map(plant => {
             const wateringStatus = getWateringStatus(plant.nextWatering);
             
@@ -288,20 +329,19 @@ function PlantsList({ plants: initialPlants, onUpdatePlant }) {
             plant={selectedPlant}
             onClose={() => setShowDetails(false)}
             onSave={handleSavePlant}
+            onDelete={handleDeletePlant}
           />
         </div>
       )}
       
       {/* Care Log Modal */}
       {showLogModal && selectedPlant && (
-        <div className="modal-overlay">
-          <CareLogModal
-            plant={selectedPlant}
-            onClose={() => setShowLogModal(false)}
-            onSave={handleSaveLog}
-            isLoading={isLoading}
-          />
-        </div>
+        <CareLogModal
+          plant={selectedPlant}
+          onClose={() => setShowLogModal(false)}
+          onSave={handleSaveLog}
+          isLoading={isLoading}
+        />
       )}
     </div>
   );
