@@ -1,12 +1,118 @@
-# React + Vite
+# Folias - Plant Management App
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Folias is a complete plant management application designed to help you keep track of your plant collection, their care requirements, and health status.
 
-Currently, two official plugins are available:
+## Project Structure
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react/README.md) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+This is a full-stack application with the following structure:
 
-## Expanding the ESLint configuration
+```
+folias-react/
+├── src/               # React frontend source code
+├── public/            # Static assets for the frontend
+├── backend/           # Node.js + Express + MongoDB API
+└── ... other files    # Configuration, package.json, etc.
+```
 
-If you are developing a production application, we recommend using TypeScript and enable type-aware lint rules. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+## Features
+
+- 🌱 Plant inventory management
+- 🏡 Room-based organization
+- 💧 Care logging (watering, fertilizing, repotting, health issues)
+- 📊 Plant health tracking
+- 📅 Watering reminders
+- 📱 Responsive design for both desktop and mobile
+
+## Getting Started
+
+### Prerequisites
+
+- Node.js (v14+)
+- Docker and Docker Compose (for MongoDB)
+- npm or yarn
+
+### MongoDB Setup with Docker
+
+This project uses MongoDB running in Docker containers:
+
+1. Start the MongoDB containers:
+
+```bash
+./start-mongodb.sh
+```
+
+This will:
+- Start MongoDB in a Docker container
+- Start Mongo Express (web UI for MongoDB) at http://localhost:8081
+- Create a persistent volume for your data
+
+2. Access the MongoDB admin interface:
+   - Open http://localhost:8081 in your browser
+   - Login credentials are in the docker-compose.yml file
+
+To stop the MongoDB containers:
+
+```bash
+docker-compose down
+```
+
+### Backend Setup
+
+1. Navigate to the backend directory:
+
+```bash
+cd backend
+```
+
+2. Install dependencies:
+
+```bash
+npm install
+```
+
+3. Start the backend development server:
+
+```bash
+npm run dev
+```
+
+The API will be available at http://localhost:8000
+
+### Frontend Setup
+
+1. From the project root, install frontend dependencies:
+
+```bash
+npm install
+```
+
+2. Start the frontend development server:
+
+```bash
+npm run dev
+```
+
+The frontend will be available at http://localhost:5173
+
+## API Documentation
+
+See the [backend README](backend/README.md) for detailed API documentation.
+
+## Development Roadmap
+
+- [x] Basic plant tracking
+- [x] Care logging
+- [x] Room management
+- [ ] Plant recognition
+- [ ] Offline support
+- [ ] Plant marketplace
+- [ ] Social sharing
+- [ ] Mobile app using React Native
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit issues and pull requests.
+
+## License
+
+This project is licensed under the MIT License - see the LICENSE file for details.

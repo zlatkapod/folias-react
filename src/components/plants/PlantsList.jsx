@@ -1,0 +1,310 @@
+import { useState, useEffect } from 'react';
+import PlantDetails from './PlantDetails';
+import CareLogModal from './CareLogModal';
+import { careLogApi } from '../../services/api';
+
+function PlantsList({ plants: initialPlants, onUpdatePlant }) {
+  const [plants, setPlants] = useState(initialPlants);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filterRoom, setFilterRoom] = useState('');
+  const [sortBy, setSortBy] = useState('name');
+  const [selectedPlant, setSelectedPlant] = useState(null);
+  const [showLogModal, setShowLogModal] = useState(false);
+  const [showDetails, setShowDetails] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState(null);
+  
+  // Update component state when props change
+  useEffect(() => {
+    setPlants(initialPlants);
+  }, [initialPlants]);
+  
+  // Get unique rooms for the filter dropdown
+  const uniqueRooms = [...new Set(plants.map(plant => plant.room))];
+  
+  // Filter plants based on search term and room filter
+  const filteredPlants = plants.filter(plant => {
+    const matchesSearch = 
+      (plant.name ? plant.name.toLowerCase().includes(searchTerm.toLowerCase()) : false) ||
+      (plant.type ? plant.type.toLowerCase().includes(searchTerm.toLowerCase()) : false);
+    const matchesRoom = filterRoom === '' || (plant.room ? plant.room === filterRoom : false);
+    
+    return matchesSearch && matchesRoom;
+  });
+  
+  // Sort plants based on selected sort criteria
+  const sortedPlants = [...filteredPlants].sort((a, b) => {
+    switch(sortBy) {
+      case 'name':
+        // Handle cases where name might be undefined
+        if (!a.name) return 1;  // Move items without names to the end
+        if (!b.name) return -1;
+        return a.name.localeCompare(b.name);
+      case 'room':
+        // Handle cases where room might be undefined
+        if (!a.room) return 1;  // Move items without rooms to the end
+        if (!b.room) return -1;
+        return a.room.localeCompare(b.room);
+      case 'watering':
+        // Handle cases where nextWatering might be undefined
+        if (!a.nextWatering) return 1;  // Move items without watering dates to the end
+        if (!b.nextWatering) return -1;
+        return new Date(a.nextWatering) - new Date(b.nextWatering);
+      default:
+        return 0;
+    }
+  });
+  
+  // Format date for display
+  const formatDate = (dateString) => {
+    if (!dateString) return 'Not set';
+    
+    const date = new Date(dateString);
+    return new Intl.DateTimeFormat('en-US', { 
+      month: 'short', 
+      day: 'numeric' 
+    }).format(date);
+  };
+  
+  // Calculate days until next watering
+  const getDaysUntilWatering = (nextWateringDate) => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0); // normalize today's date
+    
+    const wateringDate = new Date(nextWateringDate);
+    const timeDiff = wateringDate - today;
+    const daysDiff = Math.ceil(timeDiff / (1000 * 3600 * 24));
+    
+    return daysDiff;
+  };
+  
+  // Get watering status indicator
+  const getWateringStatus = (nextWateringDate) => {
+    if (!nextWateringDate) return 'ok'; // Default status if no watering date
+    
+    const daysUntil = getDaysUntilWatering(nextWateringDate);
+    
+    if (daysUntil < 0) return 'overdue';
+    if (daysUntil === 0) return 'today';
+    if (daysUntil <= 2) return 'soon';
+    return 'ok';
+  };
+
+  // Handle plant detail view
+  const handleViewDetails = (plant) => {
+    setSelectedPlant(plant);
+    setShowDetails(true);
+  };
+
+  // Handle opening care log modal
+  const handleOpenLogModal = (plant) => {
+    setSelectedPlant(plant);
+    setShowLogModal(true);
+  };
+
+  // Handle plant updates
+  const handleSavePlant = (updatedPlant) => {
+    const updatedPlants = plants.map(p => 
+      p.id === updatedPlant.id ? updatedPlant : p
+    );
+    setPlants(updatedPlants);
+    setSelectedPlant(updatedPlant);
+    
+    // If parent component provided update handler, call it
+    if (onUpdatePlant) {
+      onUpdatePlant(updatedPlant);
+    }
+  };
+
+  // Handle care log save
+  const handleSaveLog = async (log, plantUpdates) => {
+    setIsLoading(true);
+    setError(null);
+    
+    try {
+      // Add the plant ID to the log
+      const logData = {
+        ...log,
+        plantId: selectedPlant.id
+      };
+      
+      // Save the log to the API
+      const savedLog = await careLogApi.create(logData);
+      console.log('Log saved:', savedLog);
+      
+      // If this log includes plant updates (like repotting)
+      if (Object.keys(plantUpdates).length > 0 && selectedPlant) {
+        const updatedPlant = {
+          ...selectedPlant,
+          ...plantUpdates,
+        };
+        
+        // Update the plant
+        handleSavePlant(updatedPlant);
+      }
+      
+      // Close the modal
+      setShowLogModal(false);
+    } catch (err) {
+      console.error('Error saving care log:', err);
+      setError('Failed to save care log. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
+  return (
+    <div className="plants-view">
+      <div className="plants-controls">
+        <div className="search-bar">
+          <input
+            type="text"
+            placeholder="Search plants..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+        </div>
+        
+        <div className="filter-controls">
+          <div className="filter-item">
+            <label htmlFor="roomFilter">Room:</label>
+            <select
+              id="roomFilter"
+              value={filterRoom}
+              onChange={(e) => setFilterRoom(e.target.value)}
+            >
+              <option value="">All Rooms</option>
+              {uniqueRooms.map(room => (
+                <option key={room} value={room}>{room}</option>
+              ))}
+            </select>
+          </div>
+          
+          <div className="filter-item">
+            <label htmlFor="sortBy">Sort by:</label>
+            <select
+              id="sortBy"
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value)}
+            >
+              <option value="name">Name</option>
+              <option value="room">Room</option>
+              <option value="watering">Next Watering</option>
+            </select>
+          </div>
+        </div>
+      </div>
+      
+      {isLoading && <div className="loading-indicator">Loading...</div>}
+      {error && <div className="error-message">{error}</div>}
+      
+      {sortedPlants.length > 0 ? (
+        <div className="plants-list">
+          {sortedPlants.map(plant => {
+            const wateringStatus = getWateringStatus(plant.nextWatering);
+            
+            return (
+              <div key={plant.id} className="plant-card">
+                <div className="plant-header">
+                  {plant.imageUrl ? (
+                    <div className="plant-image">
+                      <img src={plant.imageUrl} alt={plant.name} />
+                    </div>
+                  ) : (
+                    <div className="plant-icon">
+                      🪴
+                    </div>
+                  )}
+                  <div className="plant-main-info">
+                    <h3>{plant.name}</h3>
+                    {plant.type && plant.name !== plant.type && (
+                      <span className="plant-type">{plant.type}</span>
+                    )}
+                  </div>
+                </div>
+                
+                <div className="plant-location">
+                  <span className="location-label">Location:</span>
+                  <span className="location-value">{plant.room}</span>
+                  {plant.lightCondition && (
+                    <span className="light-condition">• {plant.lightCondition}</span>
+                  )}
+                </div>
+                
+                <div className={`plant-watering ${wateringStatus}`}>
+                  <div className="watering-icon">
+                    💧
+                  </div>
+                  <div className="watering-info">
+                    <span className="watering-label">
+                      {wateringStatus === 'overdue' ? 'Watering Overdue' :
+                       wateringStatus === 'today' ? 'Water Today' :
+                       wateringStatus === 'soon' ? 'Water Soon' : 'Next Watering'}
+                    </span>
+                    <span className="watering-date">
+                      {plant.nextWatering ? formatDate(plant.nextWatering) : 'Not scheduled'}
+                    </span>
+                  </div>
+                </div>
+                
+                <div className="plant-health">
+                  <span className={`health-indicator ${plant.health === 'Good' ? 'healthy' : 'needs-attention'}`}>
+                    {plant.health === 'Good' ? '✓ Healthy' : '⚠ Needs Attention'}
+                  </span>
+                </div>
+                
+                <div className="plant-card-actions">
+                  <button 
+                    className="action-btn"
+                    onClick={() => handleViewDetails(plant)}
+                  >
+                    Details
+                  </button>
+                  <button 
+                    className="action-btn"
+                    onClick={() => handleOpenLogModal(plant)}
+                  >
+                    Log Care
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      ) : (
+        <div className="empty-state">
+          <p>No plants found matching your criteria.</p>
+          <button onClick={() => {
+            setSearchTerm('');
+            setFilterRoom('');
+          }}>Clear Filters</button>
+        </div>
+      )}
+      
+      {/* Plant Details Page */}
+      {showDetails && selectedPlant && (
+        <div className="details-overlay">
+          <PlantDetails
+            plant={selectedPlant}
+            onClose={() => setShowDetails(false)}
+            onSave={handleSavePlant}
+          />
+        </div>
+      )}
+      
+      {/* Care Log Modal */}
+      {showLogModal && selectedPlant && (
+        <div className="modal-overlay">
+          <CareLogModal
+            plant={selectedPlant}
+            onClose={() => setShowLogModal(false)}
+            onSave={handleSaveLog}
+            isLoading={isLoading}
+          />
+        </div>
+      )}
+    </div>
+  );
+}
+
+export default PlantsList; 
