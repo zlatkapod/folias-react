@@ -228,110 +228,99 @@ function PlantsList({ plants: initialPlants, onUpdatePlant }) {
       {isLoading && <div className="loading-indicator">Loading...</div>}
       {error && <div className="error-message">{error}</div>}
       
-      {sortedPlants.length > 0 ? (
-        <div className="plants-list">
-          {/* Add New Plant Card - First Item */}
-          <div 
-            className="plant-card add-plant-card"
-            onClick={handleAddPlantClick}
-          >
-            <div className="add-plant-icon">
-              <span className="plus-icon">+</span>
-            </div>
+      <div className="plants-list">
+        {/* Add New Plant Card - Always visible */}
+        <div 
+          className="plant-card add-plant-card"
+          onClick={handleAddPlantClick}
+        >
+          <div className="add-plant-icon">
+            <span className="plus-icon">+</span>
           </div>
+          <div className="add-plant-text">Add New Plant</div>
+        </div>
+        
+        {/* Show message when no plants exist */}
+        {sortedPlants.length === 0 && (
+          <div className="empty-plants-message">
+            <p>You don't have any plants yet. Click the "Add New Plant" card to get started!</p>
+          </div>
+        )}
+        
+        {/* Existing Plant Cards */}
+        {sortedPlants.map(plant => {
+          const wateringStatus = getWateringStatus(plant.nextWatering);
           
-          {/* Existing Plant Cards */}
-          {sortedPlants.map(plant => {
-            const wateringStatus = getWateringStatus(plant.nextWatering);
-            
-            return (
-              <div key={plant.id} className="plant-card">
-                <div className="plant-header">
-                  {plant.imageUrl ? (
-                    <div className="plant-image">
-                      <img src={plant.imageUrl} alt={plant.name} />
-                    </div>
-                  ) : (
-                    <div className="plant-icon">
-                      🪴
-                    </div>
+          return (
+            <div key={plant.id || plant._id} className="plant-card">
+              <div className="plant-header">
+                {plant.imageUrl ? (
+                  <div className="plant-image">
+                    <img src={plant.imageUrl} alt={plant.name} />
+                  </div>
+                ) : (
+                  <div className="plant-icon">
+                    🪴
+                  </div>
+                )}
+                <div className="plant-main-info">
+                  <h3>{plant.name}</h3>
+                  {plant.type && plant.name !== plant.type && (
+                    <span className="plant-type">{plant.type}</span>
                   )}
-                  <div className="plant-main-info">
-                    <h3>{plant.name}</h3>
-                    {plant.type && plant.name !== plant.type && (
-                      <span className="plant-type">{plant.type}</span>
-                    )}
-                  </div>
-                </div>
-                
-                <div className="plant-location">
-                  <span className="location-label">Location:</span>
-                  <span className="location-value">{plant.room}</span>
-                  {plant.lightCondition && (
-                    <span className="light-condition">• {plant.lightCondition}</span>
-                  )}
-                </div>
-                
-                <div className={`plant-watering ${wateringStatus}`}>
-                  <div className="watering-icon">
-                    💧
-                  </div>
-                  <div className="watering-info">
-                    <span className="watering-label">
-                      {wateringStatus === 'overdue' ? 'Watering Overdue' :
-                       wateringStatus === 'today' ? 'Water Today' :
-                       wateringStatus === 'soon' ? 'Water Soon' : 'Next Watering'}
-                    </span>
-                    <span className="watering-date">
-                      {plant.nextWatering ? formatDate(plant.nextWatering) : 'Not scheduled'}
-                    </span>
-                  </div>
-                </div>
-                
-                <div className="plant-health">
-                  <span className={`health-indicator ${plant.health === 'Good' ? 'healthy' : 'needs-attention'}`}>
-                    {plant.health === 'Good' ? '✓ Healthy' : '⚠ Needs Attention'}
-                  </span>
-                </div>
-                
-                <div className="plant-card-actions">
-                  <button 
-                    className="action-btn"
-                    onClick={() => handleViewDetails(plant)}
-                  >
-                    Details
-                  </button>
-                  <button 
-                    className="action-btn"
-                    onClick={() => handleOpenLogModal(plant)}
-                  >
-                    Log Care
-                  </button>
                 </div>
               </div>
-            );
-          })}
-        </div>
-      ) : (
-        <div className="empty-state">
-          <p>No plants found matching your criteria.</p>
-          <button onClick={() => {
-            setSearchTerm('');
-            setFilterRoom('');
-          }}>Clear Filters</button>
-        </div>
-      )}
+              
+              <div className="plant-location">
+                <span className="location-icon">📍</span>
+                <span className="location-name">{plant.room || 'No room assigned'}</span>
+              </div>
+              
+              <div className="plant-watering">
+                <div className={`watering-indicator ${wateringStatus}`}>
+                  <span className="watering-icon">💧</span>
+                  <span className="watering-text">
+                    {wateringStatus === 'overdue' && 'Overdue'}
+                    {wateringStatus === 'today' && 'Water today'}
+                    {wateringStatus === 'soon' && 'Water soon'}
+                    {wateringStatus === 'ok' && 'Water on ' + formatDate(plant.nextWatering)}
+                  </span>
+                </div>
+              </div>
+              
+              <div className="plant-actions">
+                <button 
+                  className="action-btn log" 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleOpenLogModal(plant);
+                  }}
+                >
+                  Log Care
+                </button>
+                <button 
+                  className="action-btn details"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleViewDetails(plant);
+                  }}
+                >
+                  Details
+                </button>
+              </div>
+            </div>
+          );
+        })}
+      </div>
       
-      {/* Plant Details Page */}
+      {/* Plant Details Modal */}
       {showDetails && selectedPlant && (
-        <div className="details-overlay">
-          <PlantDetails
-            plant={selectedPlant}
-            onClose={() => setShowDetails(false)}
-            onSave={handleSavePlant}
-            onDelete={handleDeletePlant}
-          />
-        </div>
+        <PlantDetails 
+          plant={selectedPlant}
+          onClose={() => setShowDetails(false)}
+          onSave={handleSavePlant}
+          onDelete={handleDeletePlant}
+        />
       )}
       
       {/* Care Log Modal */}
@@ -341,6 +330,7 @@ function PlantsList({ plants: initialPlants, onUpdatePlant }) {
           onClose={() => setShowLogModal(false)}
           onSave={handleSaveLog}
           isLoading={isLoading}
+          error={error}
         />
       )}
     </div>

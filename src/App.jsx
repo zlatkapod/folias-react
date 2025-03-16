@@ -130,22 +130,65 @@ function App() {
     checkServer();
   }, []);
 
-  // Load configuration data from local storage
+  // Load configuration data from API or localStorage as fallback
   useEffect(() => {
-    const loadConfigData = () => {
+    const loadConfigData = async () => {
       try {
+        // First try to load from localStorage as initial data
         const storedPlantTypes = localStorage.getItem('plantTypes');
         const storedLightConditions = localStorage.getItem('lightConditions');
         const storedPotSizes = localStorage.getItem('potSizes');
         const storedSoilTypes = localStorage.getItem('soilTypes');
         const storedBlogPosts = localStorage.getItem('blogPosts');
         
+        // Set initial data from localStorage if available
         if (storedPlantTypes) setPlantTypes(JSON.parse(storedPlantTypes));
         if (storedLightConditions) setLightConditions(JSON.parse(storedLightConditions));
         if (storedPotSizes) setPotSizes(JSON.parse(storedPotSizes));
         if (storedSoilTypes) setSoilTypes(JSON.parse(storedSoilTypes));
         if (storedBlogPosts) setBlogPosts(JSON.parse(storedBlogPosts));
         else setBlogPosts(mockBlogPosts); // Use mock data if no saved blog posts
+        
+        // If server is online, fetch from MongoDB and override localStorage data
+        if (serverStatus && serverStatus.status === 'online') {
+          try {
+            console.log('Fetching configuration data from MongoDB...');
+            const [plantTypesResponse, soilTypesResponse, potSizesResponse, lightConditionsResponse] = 
+              await Promise.all([
+                configService.getPlantTypes(),
+                configService.getSoilTypes(),
+                configService.getPotSizes(),
+                configService.getLightConditions()
+              ]);
+            
+            // Only update state if we got valid data back
+            if (plantTypesResponse && plantTypesResponse.length > 0) {
+              setPlantTypes(plantTypesResponse);
+              // Update localStorage with MongoDB data
+              localStorage.setItem('plantTypes', JSON.stringify(plantTypesResponse));
+            }
+            
+            if (soilTypesResponse && soilTypesResponse.length > 0) {
+              setSoilTypes(soilTypesResponse);
+              localStorage.setItem('soilTypes', JSON.stringify(soilTypesResponse));
+            }
+            
+            if (potSizesResponse && potSizesResponse.length > 0) {
+              setPotSizes(potSizesResponse);
+              localStorage.setItem('potSizes', JSON.stringify(potSizesResponse));
+            }
+            
+            if (lightConditionsResponse && lightConditionsResponse.length > 0) {
+              setLightConditions(lightConditionsResponse);
+              localStorage.setItem('lightConditions', JSON.stringify(lightConditionsResponse));
+            }
+            
+            console.log('Successfully loaded configuration data from MongoDB');
+          } catch (err) {
+            console.error('Error fetching configuration data from API:', err);
+            // We already loaded from localStorage, so no need to do anything else
+          }
+        }
       } catch (err) {
         console.error('Error loading data from localStorage:', err);
         // Fallback to initial values if there's an error
@@ -154,27 +197,208 @@ function App() {
     };
     
     loadConfigData();
-  }, []);
+  }, [serverStatus]);
 
   // Configuration data save handlers
-  const handleSavePlantTypes = (updatedPlantTypes) => {
-    setPlantTypes(updatedPlantTypes);
-    localStorage.setItem('plantTypes', JSON.stringify(updatedPlantTypes));
+  const handleSavePlantTypes = async (updatedPlantTypes) => {
+    try {
+      // Ensure all plant types have a label field (required by MongoDB)
+      const validatedPlantTypes = updatedPlantTypes.map(plantType => {
+        // If no label exists, use the name field as label
+        if (!plantType.label && plantType.name) {
+          return { ...plantType, label: plantType.name };
+        }
+        return plantType;
+      });
+      
+      // Save to localStorage as a fallback
+      localStorage.setItem('plantTypes', JSON.stringify(validatedPlantTypes));
+      
+      // If server is online, save to MongoDB
+      if (serverStatus.status === 'online') {
+        // For each plant type, either create or update it in MongoDB
+        const savedPlantTypes = await Promise.all(
+          validatedPlantTypes.map(async (plantType) => {
+            try {
+              if (plantType._id) {
+                // Update existing plant type
+                return await configService.updatePlantType(plantType._id, plantType);
+              } else {
+                // Create new plant type
+                return await configService.createPlantType(plantType);
+              }
+            } catch (error) {
+              console.error(`Error saving plant type ${plantType.name || plantType.label}:`, error);
+              return plantType; // Return original on error
+            }
+          })
+        );
+        
+        // Filter out any null values (failed saves)
+        const filteredPlantTypes = savedPlantTypes.filter(pt => pt !== null);
+        setPlantTypes(filteredPlantTypes.length > 0 ? filteredPlantTypes : validatedPlantTypes);
+      } else {
+        // If server is offline, just update state
+        setPlantTypes(validatedPlantTypes);
+      }
+    } catch (error) {
+      console.error('Error saving plant types:', error);
+      // Fall back to local state update
+      setPlantTypes(updatedPlantTypes);
+    }
   };
   
-  const handleSaveLightConditions = (updatedLightConditions) => {
-    setLightConditions(updatedLightConditions);
-    localStorage.setItem('lightConditions', JSON.stringify(updatedLightConditions));
+  const handleSaveLightConditions = async (updatedLightConditions) => {
+    try {
+      // Ensure all light conditions have required fields
+      const validatedLightConditions = updatedLightConditions.map(lightCondition => {
+        // Ensure both id and label exist
+        if (!lightCondition.id && lightCondition.label) {
+          return { ...lightCondition, id: lightCondition.label.toLowerCase().replace(/\s+/g, '_') };
+        }
+        if (!lightCondition.label && lightCondition.id) {
+          return { ...lightCondition, label: lightCondition.id };
+        }
+        return lightCondition;
+      });
+      
+      // Save to localStorage as a fallback
+      localStorage.setItem('lightConditions', JSON.stringify(validatedLightConditions));
+      
+      // If server is online, save to MongoDB
+      if (serverStatus.status === 'online') {
+        // For each light condition, either create or update it in MongoDB
+        const savedLightConditions = await Promise.all(
+          validatedLightConditions.map(async (lightCondition) => {
+            try {
+              if (lightCondition._id) {
+                // Update existing light condition
+                return await configService.updateLightCondition(lightCondition._id, lightCondition);
+              } else {
+                // Create new light condition
+                return await configService.createLightCondition(lightCondition);
+              }
+            } catch (error) {
+              console.error(`Error saving light condition ${lightCondition.label || lightCondition.id}:`, error);
+              return lightCondition; // Return original on error
+            }
+          })
+        );
+        
+        // Filter out any null values (failed saves)
+        const filteredLightConditions = savedLightConditions.filter(lc => lc !== null);
+        setLightConditions(filteredLightConditions.length > 0 ? filteredLightConditions : validatedLightConditions);
+      } else {
+        // If server is offline, just update state
+        setLightConditions(validatedLightConditions);
+      }
+    } catch (error) {
+      console.error('Error saving light conditions:', error);
+      // Fall back to local state update
+      setLightConditions(updatedLightConditions);
+    }
   };
   
-  const handleSavePotSizes = (updatedPotSizes) => {
-    setPotSizes(updatedPotSizes);
-    localStorage.setItem('potSizes', JSON.stringify(updatedPotSizes));
+  const handleSavePotSizes = async (updatedPotSizes) => {
+    try {
+      // Ensure all pot sizes have required fields
+      const validatedPotSizes = updatedPotSizes.map(potSize => {
+        // Ensure both id and label exist
+        if (!potSize.id && potSize.label) {
+          return { ...potSize, id: potSize.label.toLowerCase().replace(/\s+/g, '_') };
+        }
+        if (!potSize.label && potSize.id) {
+          return { ...potSize, label: potSize.id };
+        }
+        return potSize;
+      });
+      
+      // Save to localStorage as a fallback
+      localStorage.setItem('potSizes', JSON.stringify(validatedPotSizes));
+      
+      // If server is online, save to MongoDB
+      if (serverStatus.status === 'online') {
+        // For each pot size, either create or update it in MongoDB
+        const savedPotSizes = await Promise.all(
+          validatedPotSizes.map(async (potSize) => {
+            try {
+              if (potSize._id) {
+                // Update existing pot size
+                return await configService.updatePotSize(potSize._id, potSize);
+              } else {
+                // Create new pot size
+                return await configService.createPotSize(potSize);
+              }
+            } catch (error) {
+              console.error(`Error saving pot size ${potSize.label || potSize.id}:`, error);
+              return potSize; // Return original on error
+            }
+          })
+        );
+        
+        // Filter out any null values (failed saves)
+        const filteredPotSizes = savedPotSizes.filter(ps => ps !== null);
+        setPotSizes(filteredPotSizes.length > 0 ? filteredPotSizes : validatedPotSizes);
+      } else {
+        // If server is offline, just update state
+        setPotSizes(validatedPotSizes);
+      }
+    } catch (error) {
+      console.error('Error saving pot sizes:', error);
+      // Fall back to local state update
+      setPotSizes(updatedPotSizes);
+    }
   };
   
-  const handleSaveSoilTypes = (updatedSoilTypes) => {
-    setSoilTypes(updatedSoilTypes);
-    localStorage.setItem('soilTypes', JSON.stringify(updatedSoilTypes));
+  const handleSaveSoilTypes = async (updatedSoilTypes) => {
+    try {
+      // Ensure all soil types have required fields
+      const validatedSoilTypes = updatedSoilTypes.map(soilType => {
+        // Ensure both id and label exist
+        if (!soilType.id && soilType.label) {
+          return { ...soilType, id: soilType.label.toLowerCase().replace(/\s+/g, '_') };
+        }
+        if (!soilType.label && soilType.id) {
+          return { ...soilType, label: soilType.id };
+        }
+        return soilType;
+      });
+      
+      // Save to localStorage as a fallback
+      localStorage.setItem('soilTypes', JSON.stringify(validatedSoilTypes));
+      
+      // If server is online, save to MongoDB
+      if (serverStatus.status === 'online') {
+        // For each soil type, either create or update it in MongoDB
+        const savedSoilTypes = await Promise.all(
+          validatedSoilTypes.map(async (soilType) => {
+            try {
+              if (soilType._id) {
+                // Update existing soil type
+                return await configService.updateSoilType(soilType._id, soilType);
+              } else {
+                // Create new soil type
+                return await configService.createSoilType(soilType);
+              }
+            } catch (error) {
+              console.error(`Error saving soil type ${soilType.label || soilType.id}:`, error);
+              return soilType; // Return original on error
+            }
+          })
+        );
+        
+        // Filter out any null values (failed saves)
+        const filteredSoilTypes = savedSoilTypes.filter(st => st !== null);
+        setSoilTypes(filteredSoilTypes.length > 0 ? filteredSoilTypes : validatedSoilTypes);
+      } else {
+        // If server is offline, just update state
+        setSoilTypes(validatedSoilTypes);
+      }
+    } catch (error) {
+      console.error('Error saving soil types:', error);
+      // Fall back to local state update
+      setSoilTypes(updatedSoilTypes);
+    }
   };
 
   // Handler for adding a plant
@@ -592,7 +816,7 @@ function Sidebar({ activeView, setActiveView }) {
   return (
     <div className="sidebar">
       <div className="logo">
-        <h2>Folias</h2>
+        <h2 className="logo-text">folias</h2>
       </div>
       <nav className="sidebar-menu">
         <ul>
