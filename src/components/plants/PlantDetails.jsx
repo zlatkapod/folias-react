@@ -1,13 +1,25 @@
 import { useState, useEffect } from 'react';
-import { careLogApi } from '../../services/api';
+import { careLogApi, plantApi } from '../../services/api';
 
-function PlantDetails({ plant, onClose, onSave }) {
+function PlantDetails({ plant, onClose, onSave, onDelete }) {
   const [isEditing, setIsEditing] = useState(false);
   const [editedPlant, setEditedPlant] = useState({ ...plant });
   const [activeTab, setActiveTab] = useState('details');
   const [logs, setLogs] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  
+  // Debug: Log the plant data when component mounts or updates
+  useEffect(() => {
+    console.log('Plant details component received plant:', plant);
+  }, [plant]);
+  
+  // Initialize editedPlant whenever the plant prop changes
+  useEffect(() => {
+    setEditedPlant({ ...plant });
+  }, [plant]);
   
   // Fetch care logs when component mounts
   useEffect(() => {
@@ -54,16 +66,52 @@ function PlantDetails({ plant, onClose, onSave }) {
     setIsEditing(false);
   };
   
+  // Handle plant delete
+  const handleDeleteClick = () => {
+    setDeleteConfirmOpen(true);
+  };
+  
+  const handleConfirmDelete = async () => {
+    setIsDeleting(true);
+    setError(null);
+    
+    try {
+      await plantApi.delete(plant.id);
+      if (onDelete) {
+        onDelete(plant.id);
+      }
+      onClose();
+    } catch (err) {
+      console.error('Error deleting plant:', err);
+      setError('Failed to delete plant. Please try again.');
+      setIsDeleting(false);
+      setDeleteConfirmOpen(false);
+    }
+  };
+  
+  const handleCancelDelete = () => {
+    setDeleteConfirmOpen(false);
+  };
+  
   // Format date for display
   const formatDate = (dateString) => {
     if (!dateString) return 'N/A';
     
-    const date = new Date(dateString);
-    return new Intl.DateTimeFormat('en-US', { 
-      year: 'numeric',
-      month: 'short', 
-      day: 'numeric' 
-    }).format(date);
+    try {
+      const date = new Date(dateString);
+      // Check if date is valid
+      if (isNaN(date.getTime())) {
+        return 'N/A';
+      }
+      return new Intl.DateTimeFormat('en-US', { 
+        year: 'numeric',
+        month: 'short', 
+        day: 'numeric' 
+      }).format(date);
+    } catch (e) {
+      console.error('Error formatting date:', e);
+      return 'N/A';
+    }
   };
   
   // Get the icon for a specific log type
@@ -81,27 +129,75 @@ function PlantDetails({ plant, onClose, onSave }) {
   const formatLogDate = (dateString) => {
     if (!dateString) return 'N/A';
     
-    const date = new Date(dateString);
-    return {
-      date: new Intl.DateTimeFormat('en-US', { 
-        month: 'short', 
-        day: 'numeric',
-        year: 'numeric'
-      }).format(date),
-      time: new Intl.DateTimeFormat('en-US', { 
-        hour: 'numeric', 
-        minute: 'numeric',
-        hour12: true
-      }).format(date)
-    };
+    try {
+      const date = new Date(dateString);
+      return {
+        date: new Intl.DateTimeFormat('en-US', { 
+          month: 'short', 
+          day: 'numeric',
+          year: 'numeric'
+        }).format(date),
+        time: new Intl.DateTimeFormat('en-US', { 
+          hour: 'numeric', 
+          minute: 'numeric',
+          hour12: true
+        }).format(date)
+      };
+    } catch (e) {
+      console.error('Error formatting log date:', e);
+      return { date: 'N/A', time: 'N/A' };
+    }
+  };
+
+  // Safely access plant properties to avoid undefined errors
+  const safePlant = {
+    id: plant?.id || '',
+    name: plant?.name || 'Unnamed Plant',
+    type: plant?.type || 'Unknown Type',
+    room: plant?.room || 'No Room Assigned',
+    health: plant?.health || 'Good',
+    acquiredDate: plant?.acquiredDate || null,
+    lightCondition: plant?.lightCondition || 'Not specified',
+    potSize: plant?.potSize || 'Not specified',
+    soilType: plant?.soilType || 'Not specified',
+    wateringFrequency: plant?.wateringFrequency || 'Not specified',
+    nextWatering: plant?.nextWatering || null,
+    notes: plant?.notes || '',
+    imageUrl: plant?.imageUrl || null
   };
   
   return (
     <div className="plant-details-container">
       <div className="plant-details-header">
-        <h2>{plant.name}</h2>
+        <h2>{safePlant.name}</h2>
         <button className="close-btn" onClick={onClose}>×</button>
       </div>
+      
+      {/* Delete confirmation modal */}
+      {deleteConfirmOpen && (
+        <div className="delete-confirm-modal">
+          <div className="delete-confirm-content">
+            <h3>Delete {safePlant.name}?</h3>
+            <p>This action cannot be undone. All care logs for this plant will also be removed.</p>
+            <div className="confirm-actions">
+              <button 
+                className="action-btn cancel" 
+                onClick={handleCancelDelete}
+                disabled={isDeleting}
+              >
+                Cancel
+              </button>
+              <button 
+                className="action-btn delete" 
+                onClick={handleConfirmDelete}
+                disabled={isDeleting}
+              >
+                {isDeleting ? 'Deleting...' : 'Delete Plant'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       
       <div className="tabs">
         <button 
@@ -121,8 +217,8 @@ function PlantDetails({ plant, onClose, onSave }) {
       {activeTab === 'details' ? (
         <div className="plant-details-content">
           <div className="plant-image-container">
-            {plant.imageUrl ? (
-              <img src={plant.imageUrl} alt={plant.name} className="plant-detail-image" />
+            {safePlant.imageUrl ? (
+              <img src={safePlant.imageUrl} alt={safePlant.name} className="plant-detail-image" />
             ) : (
               <div className="plant-detail-icon">🪴</div>
             )}
@@ -137,12 +233,12 @@ function PlantDetails({ plant, onClose, onSave }) {
                   <input
                     type="text"
                     name="name"
-                    value={editedPlant.name}
+                    value={editedPlant.name || ''}
                     onChange={handleChange}
                     className="edit-input"
                   />
                 ) : (
-                  <span className="detail-value">{plant.name}</span>
+                  <span className="detail-value">{safePlant.name}</span>
                 )}
               </div>
               
@@ -157,7 +253,7 @@ function PlantDetails({ plant, onClose, onSave }) {
                     className="edit-input"
                   />
                 ) : (
-                  <span className="detail-value">{plant.type || 'Not specified'}</span>
+                  <span className="detail-value">{safePlant.type || 'Not specified'}</span>
                 )}
               </div>
               
@@ -167,12 +263,12 @@ function PlantDetails({ plant, onClose, onSave }) {
                   <input
                     type="text"
                     name="room"
-                    value={editedPlant.room}
+                    value={editedPlant.room || ''}
                     onChange={handleChange}
                     className="edit-input"
                   />
                 ) : (
-                  <span className="detail-value">{plant.room}</span>
+                  <span className="detail-value">{safePlant.room}</span>
                 )}
               </div>
               
@@ -181,7 +277,7 @@ function PlantDetails({ plant, onClose, onSave }) {
                 {isEditing ? (
                   <select
                     name="health"
-                    value={editedPlant.health}
+                    value={editedPlant.health || 'Good'}
                     onChange={handleChange}
                     className="edit-select"
                   >
@@ -189,8 +285,8 @@ function PlantDetails({ plant, onClose, onSave }) {
                     <option value="Needs attention">Needs attention</option>
                   </select>
                 ) : (
-                  <span className={`detail-value health-status ${plant.health === 'Good' ? 'healthy' : 'needs-attention'}`}>
-                    {plant.health}
+                  <span className={`detail-value health-status ${safePlant.health === 'Good' ? 'healthy' : 'needs-attention'}`}>
+                    {safePlant.health}
                   </span>
                 )}
               </div>
@@ -201,12 +297,12 @@ function PlantDetails({ plant, onClose, onSave }) {
                   <input
                     type="date"
                     name="acquiredDate"
-                    value={editedPlant.acquiredDate || ''}
+                    value={editedPlant.acquiredDate ? new Date(editedPlant.acquiredDate).toISOString().split('T')[0] : ''}
                     onChange={handleChange}
                     className="edit-input"
                   />
                 ) : (
-                  <span className="detail-value">{formatDate(plant.acquiredDate)}</span>
+                  <span className="detail-value">{formatDate(safePlant.acquiredDate)}</span>
                 )}
               </div>
             </div>
@@ -226,7 +322,7 @@ function PlantDetails({ plant, onClose, onSave }) {
                     className="edit-input"
                   />
                 ) : (
-                  <span className="detail-value">{plant.lightCondition || 'Not specified'}</span>
+                  <span className="detail-value">{safePlant.lightCondition}</span>
                 )}
               </div>
               
@@ -241,7 +337,7 @@ function PlantDetails({ plant, onClose, onSave }) {
                     className="edit-input"
                   />
                 ) : (
-                  <span className="detail-value">{plant.potSize || 'Not specified'}</span>
+                  <span className="detail-value">{safePlant.potSize}</span>
                 )}
               </div>
               
@@ -256,7 +352,7 @@ function PlantDetails({ plant, onClose, onSave }) {
                     className="edit-input"
                   />
                 ) : (
-                  <span className="detail-value">{plant.soilType || 'Not specified'}</span>
+                  <span className="detail-value">{safePlant.soilType}</span>
                 )}
               </div>
               
@@ -271,7 +367,7 @@ function PlantDetails({ plant, onClose, onSave }) {
                     className="edit-input"
                   />
                 ) : (
-                  <span className="detail-value">{plant.wateringFrequency || 'Not specified'}</span>
+                  <span className="detail-value">{safePlant.wateringFrequency}</span>
                 )}
               </div>
               
@@ -286,7 +382,7 @@ function PlantDetails({ plant, onClose, onSave }) {
                     className="edit-input"
                   />
                 ) : (
-                  <span className="detail-value">{formatDate(plant.nextWatering)}</span>
+                  <span className="detail-value">{formatDate(safePlant.nextWatering)}</span>
                 )}
               </div>
             </div>
@@ -303,7 +399,7 @@ function PlantDetails({ plant, onClose, onSave }) {
                 rows="4"
               />
             ) : (
-              <p className="plant-notes">{plant.notes || 'No notes added yet.'}</p>
+              <p className="plant-notes">{safePlant.notes || 'No notes added yet.'}</p>
             )}
           </div>
           
@@ -314,7 +410,10 @@ function PlantDetails({ plant, onClose, onSave }) {
                 <button className="action-btn cancel" onClick={handleCancel}>Cancel</button>
               </>
             ) : (
-              <button className="action-btn edit" onClick={() => setIsEditing(true)}>Edit Plant</button>
+              <>
+                <button className="action-btn edit" onClick={() => setIsEditing(true)}>Edit Plant</button>
+                <button className="action-btn delete" onClick={handleDeleteClick}>Delete Plant</button>
+              </>
             )}
           </div>
         </div>
@@ -396,6 +495,13 @@ function PlantDetails({ plant, onClose, onSave }) {
               <p>No care logs found for this plant.</p>
             </div>
           )}
+        </div>
+      )}
+      
+      {/* Debug section */}
+      {process.env.NODE_ENV === 'development' && (
+        <div className="debug-info" style={{ display: 'none' }}>
+          <pre>{JSON.stringify(plant, null, 2)}</pre>
         </div>
       )}
     </div>

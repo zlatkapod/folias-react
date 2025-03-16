@@ -1,44 +1,15 @@
 import { useState } from 'react';
 import AddRoomModal from './rooms/AddRoomModal';
 
-// Plant data - in a real app, this would come from an API or database
-const plantTypes = [
-  { id: 1, name: 'Dracaena Marginata', wateringFrequency: 7, lightNeeds: 'Medium', humidityNeeds: 'Medium' },
-  { id: 2, name: 'Snake Plant', wateringFrequency: 14, lightNeeds: 'Low', humidityNeeds: 'Low' },
-  { id: 3, name: 'Monstera', wateringFrequency: 10, lightNeeds: 'Medium', humidityNeeds: 'High' },
-  { id: 4, name: 'Pothos', wateringFrequency: 7, lightNeeds: 'Low to Medium', humidityNeeds: 'Medium' },
-  { id: 5, name: 'Peace Lily', wateringFrequency: 5, lightNeeds: 'Low to Medium', humidityNeeds: 'High' },
-  { id: 6, name: 'Fiddle Leaf Fig', wateringFrequency: 7, lightNeeds: 'Medium to High', humidityNeeds: 'Medium' },
-  { id: 7, name: 'ZZ Plant', wateringFrequency: 14, lightNeeds: 'Low', humidityNeeds: 'Low' },
-  { id: 8, name: 'Boston Fern', wateringFrequency: 3, lightNeeds: 'Medium', humidityNeeds: 'High' },
-  { id: 9, name: 'Spider Plant', wateringFrequency: 7, lightNeeds: 'Medium', humidityNeeds: 'Medium' },
-  { id: 10, name: 'Aloe Vera', wateringFrequency: 14, lightNeeds: 'High', humidityNeeds: 'Low' },
-];
-
-// Light conditions options
-const lightConditions = [
-  { id: 'direct', label: 'Direct Sunlight' },
-  { id: 'indirect', label: 'Indirect Sunlight' },
-  { id: 'minimal', label: 'Minimal Sunlight' },
-];
-
-// Pot sizes options
-const potSizes = [
-  { id: 'small', label: 'Small (4-6")' },
-  { id: 'medium', label: 'Medium (8-10")' },
-  { id: 'large', label: 'Large (12" or larger)' },
-];
-
-// Soil types options
-const soilTypes = [
-  { id: 'regular', label: 'Regular Potting Soil' },
-  { id: 'cactus', label: 'Cactus & Succulent Mix' },
-  { id: 'orchid', label: 'Orchid Mix' },
-  { id: 'african_violet', label: 'African Violet Mix' },
-  { id: 'peat', label: 'Peat-based Mix' },
-];
-
-function AddPlantForm({ rooms, onAddPlant, onAddRoom }) {
+function AddPlantForm({ 
+  rooms, 
+  onAddPlant, 
+  onAddRoom, 
+  plantTypes,  // Now receiving from props
+  lightConditions, // Now receiving from props
+  potSizes, // Now receiving from props
+  soilTypes // Now receiving from props
+}) {
   // Form state
   const [plantType, setPlantType] = useState('');
   const [nickname, setNickname] = useState('');
@@ -143,9 +114,16 @@ function AddPlantForm({ rooms, onAddPlant, onAddRoom }) {
       // Call the onAddRoom function passed from App component
       const newRoom = await onAddRoom(roomData);
       
-      // Select the newly created room
-      if (newRoom && newRoom.name) {
-        setSelectedRoom(newRoom.name);
+      // Select the newly created room - properly handle the API response structure
+      if (newRoom) {
+        // Check if the response has the nested structure from the API
+        if (newRoom.data && newRoom.data.room) {
+          setSelectedRoom(newRoom.data.room.name);
+        } 
+        // Fallback to the direct room object if not using the API nested structure
+        else if (newRoom.name) {
+          setSelectedRoom(newRoom.name);
+        }
       }
       
       // Close the modal

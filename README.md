@@ -1,118 +1,131 @@
-# Folias - Plant Management App
+# Folias - Plant Care Application
 
-Folias is a complete plant management application designed to help you keep track of your plant collection, their care requirements, and health status.
-
-## Project Structure
-
-This is a full-stack application with the following structure:
-
-```
-folias-react/
-├── src/               # React frontend source code
-├── public/            # Static assets for the frontend
-├── backend/           # Node.js + Express + MongoDB API
-└── ... other files    # Configuration, package.json, etc.
-```
+Folias is a comprehensive plant care application that helps you manage and track your houseplants. The application allows you to add plants, track their care, manage rooms, and configure plant-related settings.
 
 ## Features
 
-- 🌱 Plant inventory management
-- 🏡 Room-based organization
-- 💧 Care logging (watering, fertilizing, repotting, health issues)
-- 📊 Plant health tracking
-- 📅 Watering reminders
-- 📱 Responsive design for both desktop and mobile
+- **Plant Management**: Add, edit, and delete plants with detailed information
+- **Room Management**: Organize plants by rooms with different light conditions
+- **Care Tracking**: Log watering and other care activities
+- **Configuration**: Customize plant types, soil types, pot sizes, and light conditions
+- **Blog**: Share and read plant care tips and experiences
+
+## Tech Stack
+
+### Frontend
+- React
+- Vite
+- Axios for API communication
+- CSS for styling
+
+### Backend
+- Node.js
+- Express
+- MongoDB with Mongoose
+- RESTful API architecture
 
 ## Getting Started
 
 ### Prerequisites
+- Node.js (v14 or higher)
+- MongoDB (local or Atlas)
 
-- Node.js (v14+)
-- Docker and Docker Compose (for MongoDB)
-- npm or yarn
+### Installation
 
-### MongoDB Setup with Docker
-
-This project uses MongoDB running in Docker containers:
-
-1. Start the MongoDB containers:
-
+1. Clone the repository
 ```bash
-./start-mongodb.sh
+git clone https://github.com/yourusername/folias-react.git
+cd folias-react
 ```
 
-This will:
-- Start MongoDB in a Docker container
-- Start Mongo Express (web UI for MongoDB) at http://localhost:8081
-- Create a persistent volume for your data
-
-2. Access the MongoDB admin interface:
-   - Open http://localhost:8081 in your browser
-   - Login credentials are in the docker-compose.yml file
-
-To stop the MongoDB containers:
-
+2. Install frontend dependencies
 ```bash
-docker-compose down
+npm install
 ```
 
-### Backend Setup
-
-1. Navigate to the backend directory:
-
+3. Install backend dependencies
 ```bash
 cd backend
-```
-
-2. Install dependencies:
-
-```bash
 npm install
 ```
 
-3. Start the backend development server:
+4. Set up environment variables
+   - Create a `.env` file in the backend directory
+   - Add the following variables:
+   ```
+   PORT=5000
+   MONGODB_URI=mongodb://localhost:27017/folias
+   NODE_ENV=development
+   ```
 
+5. Seed the database with initial data
+```bash
+cd backend
+npm run seed
+```
+
+6. Start the backend server
 ```bash
 npm run dev
 ```
 
-The API will be available at http://localhost:8000
-
-### Frontend Setup
-
-1. From the project root, install frontend dependencies:
-
+7. In a new terminal, start the frontend development server
 ```bash
-npm install
-```
-
-2. Start the frontend development server:
-
-```bash
+cd ..
 npm run dev
 ```
 
-The frontend will be available at http://localhost:5173
+8. Open your browser and navigate to `http://localhost:5173`
 
-## API Documentation
+## Project Structure
 
-See the [backend README](backend/README.md) for detailed API documentation.
+```
+folias-react/
+├── src/                  # Frontend source code
+│   ├── components/       # React components
+│   ├── services/         # API services
+│   ├── App.jsx           # Main application component
+│   └── main.jsx          # Entry point
+├── backend/              # Backend source code
+│   ├── src/              # Backend source files
+│   │   ├── controllers/  # API controllers
+│   │   ├── models/       # MongoDB models
+│   │   ├── routes/       # API routes
+│   │   ├── middleware/   # Custom middleware
+│   │   ├── utils/        # Utility functions
+│   │   └── server.js     # Server entry point
+│   └── .env              # Environment variables
+└── README.md             # Project documentation
+```
 
-## Development Roadmap
+## API Endpoints
 
-- [x] Basic plant tracking
-- [x] Care logging
-- [x] Room management
-- [ ] Plant recognition
-- [ ] Offline support
-- [ ] Plant marketplace
-- [ ] Social sharing
-- [ ] Mobile app using React Native
+### Plants
+- `GET /api/plants` - Get all plants
+- `GET /api/plants/:id` - Get a specific plant
+- `POST /api/plants` - Create a new plant
+- `PUT /api/plants/:id` - Update a plant
+- `DELETE /api/plants/:id` - Delete a plant
 
-## Contributing
+### Rooms
+- `GET /api/rooms` - Get all rooms
+- `GET /api/rooms/:id` - Get a specific room
+- `POST /api/rooms` - Create a new room
+- `PUT /api/rooms/:id` - Update a room
+- `DELETE /api/rooms/:id` - Delete a room
 
-Contributions are welcome! Please feel free to submit issues and pull requests.
+### Configuration
+- `GET /api/config/plant-types` - Get all plant types
+- `POST /api/config/plant-types` - Create a new plant type
+- `PUT /api/config/plant-types/:id` - Update a plant type
+- `DELETE /api/config/plant-types/:id` - Delete a plant type
+- Similar endpoints for soil-types, pot-sizes, and light-conditions
 
 ## License
 
 This project is licensed under the MIT License - see the LICENSE file for details.
+
+## Acknowledgements
+
+- Plant care information sourced from various botanical resources
+- Icons and design inspiration from various open-source projects

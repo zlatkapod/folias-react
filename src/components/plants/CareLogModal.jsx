@@ -96,187 +96,193 @@ function CareLogModal({ plant, onClose, onSave, isLoading }) {
 
   return (
     <div className="care-log-modal">
-      <div className="modal-header">
-        <h3>Log Care for {plant.name}</h3>
-        <button className="close-btn" onClick={onClose}>×</button>
-      </div>
-      
-      <form onSubmit={handleSubmit}>
-        <div className="form-group">
-          <label htmlFor="logType">Care Type:</label>
-          <select 
-            id="logType"
-            value={logType}
-            onChange={(e) => setLogType(e.target.value)}
-            required
-          >
-            {logTypes.map(type => (
-              <option key={type} value={type}>{type}</option>
-            ))}
-          </select>
+      <div className="modal-content">
+        <div className="modal-header">
+          <h2>Log Care for {plant.name}</h2>
+          <button className="close-btn" onClick={onClose}>×</button>
         </div>
         
-        <div className="form-group">
-          <label htmlFor="date">Date:</label>
-          <input
-            type="date"
-            id="date"
-            name="date"
-            value={logData.date}
-            onChange={handleInputChange}
-            required
-          />
-        </div>
-        
-        {/* Type-specific fields */}
-        {logType === 'Watering' && (
-          <div className="form-group">
-            <label htmlFor="amount">Amount (ml):</label>
-            <input
-              type="number"
-              id="amount"
-              name="amount"
-              placeholder="e.g., 250"
-              value={logData.amount || ''}
-              onChange={handleInputChange}
-            />
-          </div>
-        )}
-        
-        {logType === 'Fertilizing' && (
-          <>
+        <div className="log-form">
+          <form onSubmit={handleSubmit}>
             <div className="form-group">
-              <label htmlFor="fertilizer">Fertilizer:</label>
-              <input
-                type="text"
-                id="fertilizer"
-                name="fertilizer"
-                placeholder="e.g., Plant Food Plus"
-                value={logData.fertilizer || ''}
-                onChange={handleInputChange}
-              />
-            </div>
-            <div className="form-group">
-              <label htmlFor="amount">Amount (ml):</label>
-              <input
-                type="number"
-                id="amount"
-                name="amount"
-                placeholder="e.g., 50"
-                value={logData.amount || ''}
-                onChange={handleInputChange}
-              />
-            </div>
-          </>
-        )}
-        
-        {logType === 'Repotting' && (
-          <>
-            <div className="form-group">
-              <label htmlFor="potSize">New Pot Size:</label>
-              <select
-                id="potSize"
-                name="potSize"
-                value={logData.potSize || ''}
-                onChange={handleInputChange}
+              <label htmlFor="logType">Care Type:</label>
+              <select 
+                id="logType"
+                value={logType}
+                onChange={(e) => setLogType(e.target.value)}
+                required
               >
-                <option value="">Select Pot Size</option>
-                {potSizes.map(size => (
-                  <option key={size} value={size}>{size}</option>
-                ))}
-              </select>
-            </div>
-            <div className="form-group">
-              <label htmlFor="soilType">Soil Type:</label>
-              <select
-                id="soilType"
-                name="soilType"
-                value={logData.soilType || ''}
-                onChange={handleInputChange}
-              >
-                <option value="">Select Soil Type</option>
-                {soilTypes.map(type => (
+                {logTypes.map(type => (
                   <option key={type} value={type}>{type}</option>
                 ))}
               </select>
             </div>
-          </>
-        )}
-        
-        {logType === 'Health Issue' && (
-          <>
+            
             <div className="form-group">
-              <label htmlFor="issue">Issue Type:</label>
+              <label htmlFor="date">Date:</label>
               <input
-                type="text"
-                id="issue"
-                name="issue"
-                placeholder="e.g., Yellow leaves, Pest infestation"
-                value={logData.issue || ''}
+                type="date"
+                id="date"
+                name="date"
+                value={logData.date}
                 onChange={handleInputChange}
-                required={logType === 'Health Issue'}
+                required
               />
             </div>
+            
+            {/* Type-specific fields */}
+            {logType === 'Watering' && (
+              <div className="form-group">
+                <label htmlFor="amount">Amount (ml):</label>
+                <input
+                  type="number"
+                  id="amount"
+                  name="amount"
+                  placeholder="e.g., 250"
+                  value={logData.amount || ''}
+                  onChange={handleInputChange}
+                />
+              </div>
+            )}
+            
+            {logType === 'Fertilizing' && (
+              <>
+                <div className="form-group">
+                  <label htmlFor="fertilizer">Fertilizer:</label>
+                  <input
+                    type="text"
+                    id="fertilizer"
+                    name="fertilizer"
+                    placeholder="e.g., Plant Food Plus"
+                    value={logData.fertilizer || ''}
+                    onChange={handleInputChange}
+                  />
+                </div>
+                <div className="form-group">
+                  <label htmlFor="amount">Amount (ml):</label>
+                  <input
+                    type="number"
+                    id="amount"
+                    name="amount"
+                    placeholder="e.g., 50"
+                    value={logData.amount || ''}
+                    onChange={handleInputChange}
+                  />
+                </div>
+              </>
+            )}
+            
+            {logType === 'Repotting' && (
+              <>
+                <div className="form-group">
+                  <label htmlFor="potSize">New Pot Size:</label>
+                  <select
+                    id="potSize"
+                    name="potSize"
+                    value={logData.potSize || ''}
+                    onChange={handleInputChange}
+                  >
+                    <option value="">Select Pot Size</option>
+                    {potSizes.map(size => (
+                      <option key={size} value={size}>{size}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label htmlFor="soilType">Soil Type:</label>
+                  <select
+                    id="soilType"
+                    name="soilType"
+                    value={logData.soilType || ''}
+                    onChange={handleInputChange}
+                  >
+                    <option value="">Select Soil Type</option>
+                    {soilTypes.map(type => (
+                      <option key={type} value={type}>{type}</option>
+                    ))}
+                  </select>
+                </div>
+              </>
+            )}
+            
+            {logType === 'Health Issue' && (
+              <>
+                <div className="form-group">
+                  <label htmlFor="issue">Issue Type:</label>
+                  <input
+                    type="text"
+                    id="issue"
+                    name="issue"
+                    placeholder="e.g., Yellow leaves, Pest infestation"
+                    value={logData.issue || ''}
+                    onChange={handleInputChange}
+                    required={logType === 'Health Issue'}
+                  />
+                </div>
+                <div className="form-group">
+                  <label htmlFor="treatment">Treatment Applied:</label>
+                  <input
+                    type="text"
+                    id="treatment"
+                    name="treatment"
+                    placeholder="e.g., Neem oil spray, Removed affected leaves"
+                    value={logData.treatment || ''}
+                    onChange={handleInputChange}
+                  />
+                </div>
+              </>
+            )}
+            
             <div className="form-group">
-              <label htmlFor="treatment">Treatment Applied:</label>
-              <input
-                type="text"
-                id="treatment"
-                name="treatment"
-                placeholder="e.g., Neem oil spray, Removed affected leaves"
-                value={logData.treatment || ''}
+              <label htmlFor="notes">Notes:</label>
+              <textarea
+                id="notes"
+                name="notes"
+                placeholder="Additional notes about this care activity..."
+                value={logData.notes}
                 onChange={handleInputChange}
+                rows="3"
               />
             </div>
-          </>
-        )}
-        
-        <div className="form-group">
-          <label htmlFor="notes">Notes:</label>
-          <textarea
-            id="notes"
-            name="notes"
-            placeholder="Additional notes about this care activity..."
-            value={logData.notes}
-            onChange={handleInputChange}
-            rows="3"
-          />
-        </div>
-        
-        <div className="form-group">
-          <label htmlFor="photo">Photo (Optional):</label>
-          <input
-            type="file"
-            id="photo"
-            name="photo"
-            accept="image/*"
-            onChange={handlePhotoUpload}
-          />
-          {photoPreview && (
-            <div className="photo-preview">
-              <img src={photoPreview} alt="Preview" />
+            
+            <div className="form-group">
+              <label htmlFor="photo">Photo (Optional):</label>
+              <input
+                type="file"
+                id="photo"
+                name="photo"
+                accept="image/*"
+                onChange={handlePhotoUpload}
+                className="file-input"
+              />
+              
+              {photoPreview && (
+                <div className="photo-preview">
+                  <img src={photoPreview} alt="Care log preview" />
+                </div>
+              )}
             </div>
-          )}
+            
+            <div className="form-actions">
+              <button
+                type="button"
+                className="cancel-btn"
+                onClick={onClose}
+                disabled={isLoading}
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                className="save-btn"
+                disabled={isLoading}
+              >
+                {isLoading ? 'Saving...' : 'Save Log Entry'}
+              </button>
+            </div>
+          </form>
         </div>
-        
-        <div className="modal-actions">
-          <button 
-            type="button" 
-            className="cancel-btn" 
-            onClick={onClose}
-            disabled={isLoading}
-          >
-            Cancel
-          </button>
-          <button 
-            type="submit" 
-            className="save-btn"
-            disabled={isLoading}
-          >
-            {isLoading ? 'Saving...' : 'Save Log'}
-          </button>
-        </div>
-      </form>
+      </div>
     </div>
   );
 }

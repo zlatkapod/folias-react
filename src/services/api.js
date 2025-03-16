@@ -1,26 +1,52 @@
 // API service for Folias app
 // Handles all communication with the backend API
 
-const API_BASE_URL = 'http://localhost:8000/api';
+import axios from 'axios';
+
+// Define API base URL
+const API_BASE_URL = 'http://localhost:5001/api';
+
+// Create an axios instance with default config
+const api = axios.create({
+  baseURL: API_BASE_URL,
+  headers: {
+    'Content-Type': 'application/json'
+  }
+});
+
+// Add response interceptor for consistent error handling
+api.interceptors.response.use(
+  response => response.data,
+  error => {
+    const message = 
+      error.response?.data?.error || 
+      error.response?.data?.message || 
+      error.message || 
+      'Unknown error';
+    
+    console.error('API Error:', message);
+    return Promise.reject(message);
+  }
+);
 
 // For development: Check if backend server is accessible
 const checkServerStatus = async () => {
   try {
-    const response = await fetch(`${API_BASE_URL.split('/api')[0]}/`, {
+    const response = await fetch(`${API_BASE_URL.split('/api')[0]}/api/health`, {
       method: 'GET',
       headers: { 'Content-Type': 'application/json' },
     });
     
     if (response.ok) {
       console.log('Backend server is running');
-      return true;
+      return { status: 'online', message: 'Server is running' };
     } else {
       console.error('Backend server is running but returned an error status');
-      return false;
+      return { status: 'offline', message: 'Server error' };
     }
   } catch (e) {
     console.error('Backend server is not accessible:', e.message);
-    return false;
+    return { status: 'offline', message: 'Unable to connect to server' };
   }
 };
 
@@ -319,9 +345,4 @@ export const authApi = {
   }
 };
 
-export default {
-  plant: plantApi,
-  room: roomApi,
-  careLog: careLogApi,
-  auth: authApi,
-}; 
+export default api; 

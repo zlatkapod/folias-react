@@ -3,29 +3,126 @@ import './App.css'
 import AddPlantForm from './components/AddPlantForm'
 import Dashboard from './components/dashboard/Dashboard'
 import PlantsList from './components/plants/PlantsList'
-import { plantApi, roomApi, authApi } from './services/api'
+import { checkServerStatus, plantService, roomService, configService } from './services'
+import BlogList from './components/blog/BlogList'
+import AddBlogPostForm from './components/blog/AddBlogPostForm'
+import ConfigPage from './components/config/ConfigPage'
 
 // Default empty states to use before fetching data
 const initialPlants = [];
 const initialRooms = [];
 
+// Initial plant configuration data
+const initialPlantTypes = [
+  { id: 1, name: 'Dracaena Marginata', wateringFrequency: 7, lightNeeds: 'Medium', humidityNeeds: 'Medium' },
+  { id: 2, name: 'Snake Plant', wateringFrequency: 14, lightNeeds: 'Low', humidityNeeds: 'Low' },
+  { id: 3, name: 'Monstera', wateringFrequency: 10, lightNeeds: 'Medium', humidityNeeds: 'High' },
+  { id: 4, name: 'Pothos', wateringFrequency: 7, lightNeeds: 'Low to Medium', humidityNeeds: 'Medium' },
+  { id: 5, name: 'Peace Lily', wateringFrequency: 5, lightNeeds: 'Low to Medium', humidityNeeds: 'High' },
+  { id: 6, name: 'Fiddle Leaf Fig', wateringFrequency: 7, lightNeeds: 'Medium to High', humidityNeeds: 'Medium' },
+  { id: 7, name: 'ZZ Plant', wateringFrequency: 14, lightNeeds: 'Low', humidityNeeds: 'Low' },
+  { id: 8, name: 'Boston Fern', wateringFrequency: 3, lightNeeds: 'Medium', humidityNeeds: 'High' },
+  { id: 9, name: 'Spider Plant', wateringFrequency: 7, lightNeeds: 'Medium', humidityNeeds: 'Medium' },
+  { id: 10, name: 'Aloe Vera', wateringFrequency: 14, lightNeeds: 'High', humidityNeeds: 'Low' },
+];
+
+// Initial light conditions
+const initialLightConditions = [
+  { id: 'direct', label: 'Direct Sunlight' },
+  { id: 'indirect', label: 'Indirect Sunlight' },
+  { id: 'minimal', label: 'Minimal Sunlight' },
+];
+
+// Initial pot sizes
+const initialPotSizes = [
+  { id: 'small', label: 'Small (4-6")' },
+  { id: 'medium', label: 'Medium (8-10")' },
+  { id: 'large', label: 'Large (12" or larger)' },
+];
+
+// Initial soil types
+const initialSoilTypes = [
+  { id: 'regular', label: 'Regular Potting Soil' },
+  { id: 'cactus', label: 'Cactus & Succulent Mix' },
+  { id: 'orchid', label: 'Orchid Mix' },
+  { id: 'african_violet', label: 'African Violet Mix' },
+  { id: 'peat', label: 'Peat-based Mix' },
+];
+
 function App() {
   const [activeView, setActiveView] = useState('dashboard');
   const [plants, setPlants] = useState(initialPlants);
   const [rooms, setRooms] = useState(initialRooms);
+  const [blogPosts, setBlogPosts] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [serverStatus, setServerStatus] = useState(null);
+  const [serverStatus, setServerStatus] = useState('checking');
+  
+  // Configuration data states
+  const [plantTypes, setPlantTypes] = useState(initialPlantTypes);
+  const [lightConditions, setLightConditions] = useState(initialLightConditions);
+  const [potSizes, setPotSizes] = useState(initialPotSizes);
+  const [soilTypes, setSoilTypes] = useState(initialSoilTypes);
+
+  // Make setActiveView accessible to child components
+  useEffect(() => {
+    window.setActiveView = setActiveView;
+    return () => {
+      delete window.setActiveView; // Clean up when component unmounts
+    };
+  }, [setActiveView]);
 
   // Check server status on mount
   useEffect(() => {
     const checkServer = async () => {
-      const status = await authApi.checkServerStatus();
-      setServerStatus(status);
-      
-      // If server is not running, set appropriate error
-      if (!status) {
-        setError('Cannot connect to the server. Please make sure the backend is running.');
+      setIsLoading(true);
+      try {
+        const status = await checkServerStatus();
+        setServerStatus(status);
+        
+        if (status.status === 'online') {
+          // Fetch initial data from API
+          const fetchData = async () => {
+            try {
+              // Fetch plants
+              const plantsResponse = await plantService.getPlants();
+              setPlants(plantsResponse);
+              
+              // Fetch rooms
+              const roomsResponse = await roomService.getRooms();
+              setRooms(roomsResponse);
+              
+              // Fetch configuration data
+              const [plantTypesResponse, soilTypesResponse, potSizesResponse, lightConditionsResponse] = 
+                await Promise.all([
+                  configService.getPlantTypes(),
+                  configService.getSoilTypes(),
+                  configService.getPotSizes(),
+                  configService.getLightConditions()
+                ]);
+              
+              setPlantTypes(plantTypesResponse);
+              setSoilTypes(soilTypesResponse);
+              setPotSizes(potSizesResponse);
+              setLightConditions(lightConditionsResponse);
+              
+              setError(null);
+            } catch (error) {
+              console.error('Error fetching data:', error);
+              setError('Failed to load data. Please try again.');
+            } finally {
+              setIsLoading(false);
+            }
+          };
+          
+          fetchData();
+        } else {
+          setError('Server is offline. Please try again later.');
+          setIsLoading(false);
+        }
+      } catch (error) {
+        setServerStatus({ status: 'offline', message: 'Unable to connect to server' });
+        setError('Server connection failed. Please try again later.');
         setIsLoading(false);
       }
     };
@@ -33,180 +130,308 @@ function App() {
     checkServer();
   }, []);
 
-  // Fetch plants and rooms from API after server status is checked
+  // Load configuration data from local storage
   useEffect(() => {
-    // Skip if server is not running
-    if (serverStatus === false) {
-      return;
-    }
-    
-    // Skip if server status check is still in progress
-    if (serverStatus === null) {
-      return;
-    }
-    
-    async function fetchData() {
-      setIsLoading(true);
-      setError(null);
-      
+    const loadConfigData = () => {
       try {
-        // Get a development token first
-        const token = await authApi.getDevToken();
+        const storedPlantTypes = localStorage.getItem('plantTypes');
+        const storedLightConditions = localStorage.getItem('lightConditions');
+        const storedPotSizes = localStorage.getItem('potSizes');
+        const storedSoilTypes = localStorage.getItem('soilTypes');
+        const storedBlogPosts = localStorage.getItem('blogPosts');
         
-        if (!token) {
-          setError('Failed to authenticate. Please check the backend server.');
-          setIsLoading(false);
-          // Fall back to mock data
-          setPlants(mockPlants);
-          setRooms(mockRooms);
-          return;
-        }
-        
-        // Fetch plants and rooms in parallel
-        const [plantsData, roomsData] = await Promise.all([
-          plantApi.getAll(),
-          roomApi.getAll()
-        ]);
-        
-        setPlants(plantsData.data?.plants || plantsData);
-        setRooms(roomsData.data?.rooms || roomsData);
+        if (storedPlantTypes) setPlantTypes(JSON.parse(storedPlantTypes));
+        if (storedLightConditions) setLightConditions(JSON.parse(storedLightConditions));
+        if (storedPotSizes) setPotSizes(JSON.parse(storedPotSizes));
+        if (storedSoilTypes) setSoilTypes(JSON.parse(storedSoilTypes));
+        if (storedBlogPosts) setBlogPosts(JSON.parse(storedBlogPosts));
+        else setBlogPosts(mockBlogPosts); // Use mock data if no saved blog posts
       } catch (err) {
-        console.error('Error fetching data:', err);
-        setError('Failed to load data: ' + (err.message || 'Unknown error'));
-        
-        // Fall back to mock data for development if API fails
-        setPlants(mockPlants);
-        setRooms(mockRooms);
-      } finally {
-        setIsLoading(false);
+        console.error('Error loading data from localStorage:', err);
+        // Fallback to initial values if there's an error
+        setBlogPosts(mockBlogPosts);
       }
-    }
+    };
     
-    fetchData();
-  }, [serverStatus]);
+    loadConfigData();
+  }, []);
 
-  // Function to handle adding a room
-  const handleAddRoom = async (room) => {
+  // Configuration data save handlers
+  const handleSavePlantTypes = (updatedPlantTypes) => {
+    setPlantTypes(updatedPlantTypes);
+    localStorage.setItem('plantTypes', JSON.stringify(updatedPlantTypes));
+  };
+  
+  const handleSaveLightConditions = (updatedLightConditions) => {
+    setLightConditions(updatedLightConditions);
+    localStorage.setItem('lightConditions', JSON.stringify(updatedLightConditions));
+  };
+  
+  const handleSavePotSizes = (updatedPotSizes) => {
+    setPotSizes(updatedPotSizes);
+    localStorage.setItem('potSizes', JSON.stringify(updatedPotSizes));
+  };
+  
+  const handleSaveSoilTypes = (updatedSoilTypes) => {
+    setSoilTypes(updatedSoilTypes);
+    localStorage.setItem('soilTypes', JSON.stringify(updatedSoilTypes));
+  };
+
+  // Handler for adding a plant
+  const handleAddPlant = async (plantData) => {
     try {
-      // Map light level to the expected enum values
-      let lightCondition;
-      switch (room.lightLevel) {
-        case 'high':
-          lightCondition = 'Direct sunlight';
-          break;
-        case 'bright-indirect':
-          lightCondition = 'Bright indirect';
-          break;
-        case 'medium':
-          lightCondition = 'Medium light';
-          break;
-        case 'low':
-          lightCondition = 'Low light';
-          break;
-        default:
-          lightCondition = 'Medium light';
-      }
-      
-      // Create room data object with mapped values
-      const roomData = {
-        name: room.name,
-        description: room.description,
-        lightCondition: lightCondition
-      };
-      
-      const newRoom = await roomApi.create(roomData);
-      setRooms([...rooms, newRoom]);
-      return newRoom;
-    } catch (err) {
-      console.error('Error adding room:', err);
-      // Handle error (e.g., show notification)
-      throw err; // Re-throw to allow handling in the calling component
+      setIsLoading(true);
+      const newPlant = await plantService.createPlant(plantData);
+      setPlants(prevPlants => [...prevPlants, newPlant]);
+      setError(null);
+      return newPlant;
+    } catch (error) {
+      setError('Failed to add plant. Please try again.');
+      console.error('Error adding plant:', error);
+      return null;
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  // Function to handle updating a plant
-  const handleUpdatePlant = async (updatedPlant) => {
+  // Handler for updating a plant
+  const handleUpdatePlant = async (id, plantData) => {
     try {
-      // Send update to the API
-      const result = await plantApi.update(updatedPlant.id, updatedPlant);
-      
-      // Update local state with the returned data
-      setPlants(currentPlants => 
-        currentPlants.map(plant => 
-          plant.id === result.id ? result : plant
-        )
+      setIsLoading(true);
+      const updatedPlant = await plantService.updatePlant(id, plantData);
+      setPlants(prevPlants => 
+        prevPlants.map(plant => plant._id === id ? updatedPlant : plant)
       );
-    } catch (err) {
-      console.error('Error updating plant:', err);
-      // Handle error (e.g., show notification)
+      setError(null);
+      return updatedPlant;
+    } catch (error) {
+      setError('Failed to update plant. Please try again.');
+      console.error('Error updating plant:', error);
+      return null;
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  // Function to handle adding a plant
-  const handleAddPlant = async (plant) => {
+  // Handler for deleting a plant
+  const handleDeletePlant = async (id) => {
     try {
-      // Transform plant data if needed
+      setIsLoading(true);
+      await plantService.deletePlant(id);
+      setPlants(prevPlants => prevPlants.filter(plant => plant._id !== id));
+      setError(null);
+      return true;
+    } catch (error) {
+      setError('Failed to delete plant. Please try again.');
+      console.error('Error deleting plant:', error);
+      return false;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Handler for adding a room
+  const handleAddRoom = async (roomData) => {
+    try {
+      setIsLoading(true);
+      const newRoom = await roomService.createRoom(roomData);
+      setRooms(prevRooms => [...prevRooms, newRoom]);
+      setError(null);
+      return newRoom;
+    } catch (error) {
+      setError('Failed to add room. Please try again.');
+      console.error('Error adding room:', error);
+      return null;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Handler for updating a room
+  const handleUpdateRoom = async (id, roomData) => {
+    try {
+      setIsLoading(true);
+      const updatedRoom = await roomService.updateRoom(id, roomData);
+      setRooms(prevRooms => 
+        prevRooms.map(room => room._id === id ? updatedRoom : room)
+      );
+      setError(null);
+      return updatedRoom;
+    } catch (error) {
+      setError('Failed to update room. Please try again.');
+      console.error('Error updating room:', error);
+      return null;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Handler for deleting a room
+  const handleDeleteRoom = async (id) => {
+    try {
+      setIsLoading(true);
+      await roomService.deleteRoom(id);
+      setRooms(prevRooms => prevRooms.filter(room => room._id !== id));
+      setError(null);
+      return true;
+    } catch (error) {
+      setError('Failed to delete room. Please try again.');
+      console.error('Error deleting room:', error);
+      return false;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Handlers for configuration items
+  const handleAddConfigItem = async (itemType, itemData) => {
+    try {
+      setIsLoading(true);
+      let newItem;
       
-      // Map numeric watering frequency to proper enum string value
-      let wateringFrequency;
-      const frequencyDays = plant.wateringFrequency;
-      
-      if (frequencyDays <= 1) {
-        wateringFrequency = 'Daily';
-      } else if (frequencyDays <= 3) {
-        wateringFrequency = 'Every 2-3 days';
-      } else if (frequencyDays <= 7) {
-        wateringFrequency = 'Weekly';
-      } else if (frequencyDays <= 14) {
-        wateringFrequency = 'Bi-weekly';
-      } else {
-        wateringFrequency = 'Monthly';
-      }
-      
-      // Map light condition to proper enum value
-      let lightCondition;
-      switch (plant.lightCondition) {
-        case 'Direct Sunlight':
-          lightCondition = 'Direct Sunlight';
+      switch (itemType) {
+        case 'plantType':
+          newItem = await configService.createPlantType(itemData);
+          setPlantTypes(prev => [...prev, newItem]);
           break;
-        case 'Indirect Sunlight':
-          lightCondition = 'Indirect Sunlight';
+        case 'soilType':
+          newItem = await configService.createSoilType(itemData);
+          setSoilTypes(prev => [...prev, newItem]);
           break;
-        case 'Minimal Sunlight':
-          lightCondition = 'Low Light';
+        case 'potSize':
+          newItem = await configService.createPotSize(itemData);
+          setPotSizes(prev => [...prev, newItem]);
+          break;
+        case 'lightCondition':
+          newItem = await configService.createLightCondition(itemData);
+          setLightConditions(prev => [...prev, newItem]);
           break;
         default:
-          lightCondition = 'Medium Light';
+          throw new Error(`Unknown item type: ${itemType}`);
       }
       
-      const plantData = {
-        name: plant.nickname || plant.type,
-        type: plant.type,
-        room: plant.room,
-        nextWatering: new Date(plant.nextWatering),
-        lastWatered: plant.lastWatered ? new Date(plant.lastWatered) : new Date(),
-        health: plant.health || 'Good',
-        lightCondition: lightCondition,
-        potSize: plant.potSize,
-        soilType: plant.soilType,
-        wateringFrequency: wateringFrequency, // Use the string enum value
-        acquiredDate: plant.acquiredDate ? new Date(plant.acquiredDate) : new Date(),
-        notes: plant.additionalNotes,
-        // Include any other fields needed by your API
-      };
-      
-      // Send to API
-      const newPlant = await plantApi.create(plantData);
-      
-      // Add to local state
-      setPlants([...plants, newPlant]);
-      
-      // After adding, go to plants view
-      setActiveView('plants');
-    } catch (err) {
-      console.error('Error adding plant:', err);
-      // Handle error (e.g., show notification)
+      setError(null);
+      return newItem;
+    } catch (error) {
+      setError(`Failed to add ${itemType}. Please try again.`);
+      console.error(`Error adding ${itemType}:`, error);
+      return null;
+    } finally {
+      setIsLoading(false);
     }
+  };
+
+  const handleUpdateConfigItem = async (itemType, id, itemData) => {
+    try {
+      setIsLoading(true);
+      let updatedItem;
+      
+      switch (itemType) {
+        case 'plantType':
+          updatedItem = await configService.updatePlantType(id, itemData);
+          setPlantTypes(prev => prev.map(item => item._id === id ? updatedItem : item));
+          break;
+        case 'soilType':
+          updatedItem = await configService.updateSoilType(id, itemData);
+          setSoilTypes(prev => prev.map(item => item._id === id ? updatedItem : item));
+          break;
+        case 'potSize':
+          updatedItem = await configService.updatePotSize(id, itemData);
+          setPotSizes(prev => prev.map(item => item._id === id ? updatedItem : item));
+          break;
+        case 'lightCondition':
+          updatedItem = await configService.updateLightCondition(id, itemData);
+          setLightConditions(prev => prev.map(item => item._id === id ? updatedItem : item));
+          break;
+        default:
+          throw new Error(`Unknown item type: ${itemType}`);
+      }
+      
+      setError(null);
+      return updatedItem;
+    } catch (error) {
+      setError(`Failed to update ${itemType}. Please try again.`);
+      console.error(`Error updating ${itemType}:`, error);
+      return null;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleDeleteConfigItem = async (itemType, id) => {
+    try {
+      setIsLoading(true);
+      
+      switch (itemType) {
+        case 'plantType':
+          await configService.deletePlantType(id);
+          setPlantTypes(prev => prev.filter(item => item._id !== id));
+          break;
+        case 'soilType':
+          await configService.deleteSoilType(id);
+          setSoilTypes(prev => prev.filter(item => item._id !== id));
+          break;
+        case 'potSize':
+          await configService.deletePotSize(id);
+          setPotSizes(prev => prev.filter(item => item._id !== id));
+          break;
+        case 'lightCondition':
+          await configService.deleteLightCondition(id);
+          setLightConditions(prev => prev.filter(item => item._id !== id));
+          break;
+        default:
+          throw new Error(`Unknown item type: ${itemType}`);
+      }
+      
+      setError(null);
+      return true;
+    } catch (error) {
+      setError(`Failed to delete ${itemType}. Please try again.`);
+      console.error(`Error deleting ${itemType}:`, error);
+      return false;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Function to handle adding a blog post
+  const handleAddBlogPost = (blogPost) => {
+    // Generate a unique ID for the blog post
+    const newBlogPost = {
+      ...blogPost,
+      id: Date.now(), // Simple way to generate a unique ID
+      createdAt: new Date().toISOString(),
+    };
+    
+    const updatedBlogPosts = [...blogPosts, newBlogPost];
+    setBlogPosts(updatedBlogPosts);
+    
+    // Save to localStorage
+    localStorage.setItem('blogPosts', JSON.stringify(updatedBlogPosts));
+    
+    setActiveView('blog');
+  };
+  
+  // Handle updating blog posts
+  const handleUpdateBlogPost = (updatedPost) => {
+    const updatedBlogPosts = blogPosts.map(post => 
+      post.id === updatedPost.id ? updatedPost : post
+    );
+    
+    setBlogPosts(updatedBlogPosts);
+    
+    // Save to localStorage
+    localStorage.setItem('blogPosts', JSON.stringify(updatedBlogPosts));
+  };
+  
+  // Handle deleting blog posts
+  const handleDeleteBlogPost = (postId) => {
+    const updatedBlogPosts = blogPosts.filter(post => post.id !== postId);
+    
+    setBlogPosts(updatedBlogPosts);
+    
+    // Save to localStorage
+    localStorage.setItem('blogPosts', JSON.stringify(updatedBlogPosts));
   };
 
   // Function to retry connecting to the server
@@ -215,18 +440,60 @@ function App() {
     setError(null);
     setServerStatus(null);
     
-    // Clear any previous token to ensure a fresh start
-    authApi.clearToken();
-    
-    // First check server status
-    const status = await authApi.checkServerStatus();
-    setServerStatus(status);
-    
-    if (!status) {
-      setError('Cannot connect to the server. Please make sure the backend is running.');
+    try {
+      // Try to check server status again
+      const status = await checkServerStatus();
+      setServerStatus(status);
+      
+      if (status.status === 'online') {
+        // Fetch data if server is online
+        const fetchData = async () => {
+          try {
+            // Fetch plants
+            const plantsResponse = await plantService.getPlants();
+            setPlants(plantsResponse);
+            
+            // Fetch rooms
+            const roomsResponse = await roomService.getRooms();
+            setRooms(roomsResponse);
+            
+            // Fetch configuration data
+            const [plantTypesResponse, soilTypesResponse, potSizesResponse, lightConditionsResponse] = 
+              await Promise.all([
+                configService.getPlantTypes(),
+                configService.getSoilTypes(),
+                configService.getPotSizes(),
+                configService.getLightConditions()
+              ]);
+            
+            setPlantTypes(plantTypesResponse);
+            setSoilTypes(soilTypesResponse);
+            setPotSizes(potSizesResponse);
+            setLightConditions(lightConditionsResponse);
+            
+            setError(null);
+          } catch (error) {
+            console.error('Error fetching data:', error);
+            setError('Failed to load data. Please try again.');
+          } finally {
+            setIsLoading(false);
+          }
+        };
+        
+        fetchData();
+      } else {
+        setError('Server is offline. Please try again later.');
+        setIsLoading(false);
+      }
+    } catch (error) {
+      setServerStatus({ status: 'offline', message: 'Unable to connect to server' });
+      setError('Server connection failed. Please try again later.');
       setIsLoading(false);
+      
+      // Fall back to mock data
+      setPlants(mockPlants);
+      setRooms(mockRooms);
     }
-    // The second useEffect will handle data fetching if server is up
   };
 
   // Function to render the appropriate view based on activeView state
@@ -262,6 +529,29 @@ function App() {
           rooms={rooms} 
           onAddPlant={handleAddPlant}
           onAddRoom={handleAddRoom}
+          plantTypes={plantTypes}
+          lightConditions={lightConditions}
+          potSizes={potSizes}
+          soilTypes={soilTypes}
+        />;
+      case 'blog':
+        return <BlogList 
+          blogPosts={blogPosts} 
+          onUpdateBlogPost={handleUpdateBlogPost}
+          onDeleteBlogPost={handleDeleteBlogPost}
+        />;
+      case 'addBlogPost':
+        return <AddBlogPostForm onAddBlogPost={handleAddBlogPost} />;
+      case 'config':
+        return <ConfigPage 
+          plantTypes={plantTypes}
+          lightConditions={lightConditions}
+          potSizes={potSizes}
+          soilTypes={soilTypes}
+          onSavePlantTypes={handleSavePlantTypes}
+          onSaveLightConditions={handleSaveLightConditions}
+          onSavePotSizes={handleSavePotSizes}
+          onSaveSoilTypes={handleSaveSoilTypes}
         />;
       default:
         return <Dashboard plants={plants} />;
@@ -290,6 +580,9 @@ function getHeaderTitle(view) {
     case 'dashboard': return 'Dashboard';
     case 'plants': return 'My Plants';
     case 'addPlant': return 'Add New Plant';
+    case 'blog': return 'Blog';
+    case 'addBlogPost': return 'Add New Blog Post';
+    case 'config': return 'Configuration';
     default: return 'Dashboard';
   }
 }
@@ -316,10 +609,17 @@ function Sidebar({ activeView, setActiveView }) {
             My Plants
           </li>
           <li 
-            className={activeView === 'addPlant' ? 'active' : ''} 
-            onClick={() => setActiveView('addPlant')}
+            className={activeView === 'blog' ? 'active' : ''} 
+            onClick={() => setActiveView('blog')}
           >
-            Add New Plant
+            Blog
+          </li>
+          <li className="sidebar-divider"></li>
+          <li 
+            className={`config-tab ${activeView === 'config' ? 'active' : ''}`} 
+            onClick={() => setActiveView('config')}
+          >
+            Configuration
           </li>
         </ul>
       </nav>
@@ -390,6 +690,26 @@ const mockRooms = [
   { id: 1, name: 'Living Room', lightCondition: 'Bright indirect' },
   { id: 2, name: 'Bedroom', lightCondition: 'Low light' },
   { id: 3, name: 'Office', lightCondition: 'Direct sunlight' },
+];
+
+// Fallback mock blog posts for development
+const mockBlogPosts = [
+  {
+    id: 1,
+    title: "Mushrooms For Stress Management",
+    headline: "Proven techniques to cope with daily stress by microdosing psilocybin",
+    content: "Microdosing mushrooms has gained popularity as a way to manage stress and improve mental well-being. This practice involves taking very small amounts of psilocybin mushrooms, typically about one-tenth of a recreational dose.\n\nThese sub-perceptual doses don't cause hallucinations but may offer subtle mood improvements, increased creativity, and reduced anxiety for many users. Research is still in early stages, but preliminary studies suggest potential benefits for stress reduction.\n\nImportant considerations before trying microdosing include:\n\n1. Legal status: Psilocybin remains illegal in many regions\n2. Proper dosing: Working with experienced guides is recommended\n3. Individual reactions vary significantly\n4. Should be part of a holistic wellness approach\n\nAlways consult healthcare professionals, especially if you have existing mental health conditions or take medications.",
+    tags: ["microdosing", "mushrooms", "stress", "wellness"],
+    createdAt: "2023-07-15T10:30:00Z"
+  },
+  {
+    id: 2,
+    title: "Indoor Plants That Purify Your Air",
+    headline: "Top 5 houseplants that improve your home's air quality while being easy to maintain",
+    content: "Indoor air quality is often worse than outdoor air, containing pollutants like formaldehyde, benzene, and trichloroethylene. Fortunately, certain houseplants can help purify your indoor environment while adding beauty to your home.\n\nHere are the top 5 air-purifying indoor plants:\n\n1. Spider Plant (Chlorophytum comosum): Removes formaldehyde and xylene. Easy to grow and propagate.\n\n2. Peace Lily (Spathiphyllum): Filters benzene, formaldehyde, trichloroethylene. Thrives in low light but needs consistent watering.\n\n3. Snake Plant (Sansevieria trifasciata): Filters formaldehyde and benzene. Extremely low-maintenance and tolerates neglect.\n\n4. Boston Fern (Nephrolepis exaltata): Removes formaldehyde and xylene. Prefers humid environments.\n\n5. Pothos (Epipremnum aureum): Filters benzene, formaldehyde, xylene. Nearly indestructible and grows in various conditions.\n\nFor maximum benefit, aim for one medium-sized plant per 100 square feet of living space. Remember that while these plants help with air quality, they work best as part of a comprehensive approach that includes proper ventilation and reducing pollutant sources.",
+    tags: ["plants", "air quality", "health", "indoor gardening"],
+    createdAt: "2023-08-22T14:15:00Z"
+  }
 ];
 
 export default App

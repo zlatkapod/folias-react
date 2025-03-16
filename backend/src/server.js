@@ -1,73 +1,77 @@
 const express = require('express');
+const mongoose = require('mongoose');
+const dotenv = require('dotenv');
 const cors = require('cors');
 const morgan = require('morgan');
-const dotenv = require('dotenv');
-const connectDB = require('./utils/db');
 
 // Load environment variables
 dotenv.config();
 
+// Import routes
+const plantRoutes = require('./routes/plantRoutes');
+const roomRoutes = require('./routes/roomRoutes');
+const configRoutes = require('./routes/configRoutes');
+
 // Create Express app
 const app = express();
 
-// Connect to MongoDB
-connectDB();
-
-// CORS Configuration
-const corsOptions = {
-  origin: ['http://localhost:5173', 'http://localhost:5174', 'http://127.0.0.1:5173', 'http://127.0.0.1:5174'],
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
-};
-
 // Middleware
-app.use(cors(corsOptions));
+app.use(cors());
 app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
 
-// Logging middleware
+// Logging middleware in development
 if (process.env.NODE_ENV === 'development') {
   app.use(morgan('dev'));
 }
 
-// Import routes
-const plantRoutes = require('./routes/plantRoutes');
-const userRoutes = require('./routes/userRoutes');
-const careLogRoutes = require('./routes/careLogRoutes');
-const roomRoutes = require('./routes/roomRoutes');
-
 // Mount routes
 app.use('/api/plants', plantRoutes);
-app.use('/api/users', userRoutes);
-app.use('/api/care-logs', careLogRoutes);
 app.use('/api/rooms', roomRoutes);
+app.use('/api/config', configRoutes);
 
-// Base route
-app.get('/', (req, res) => {
-  res.json({ message: 'Welcome to Folias API' });
-});
-
-// Error handler middleware
-app.use((err, req, res, next) => {
-  const statusCode = err.statusCode || 500;
-  res.status(statusCode).json({
-    status: 'error',
-    statusCode,
-    message: err.message,
-    ...(process.env.NODE_ENV === 'development' && { stack: err.stack }),
+// Health check route
+app.get('/api/health', (req, res) => {
+  res.status(200).json({
+    status: 'success',
+    message: 'Server is running',
   });
 });
 
-// Start server
-const PORT = process.env.PORT || 8000;
-app.listen(PORT, () => {
-  console.log(`Server running in ${process.env.NODE_ENV} mode on port ${PORT}`);
+// Error handling middleware
+app.use((err, req, res, next) => {
+  const statusCode = err.statusCode || 500;
+  res.status(statusCode).json({
+    success: false,
+    error: err.message || 'Server Error',
+    stack: process.env.NODE_ENV === 'development' ? err.stack : undefined
+  });
 });
+
+// Connect to MongoDB
+mongoose
+  .connect(process.env.MONGODB_URI, {
+    useNewUrlParser: true,
+    useUnifiedTopology: true,
+    serverSelectionTimeoutMS: 5000, // Give up initial connection after 5 seconds
+    retryWrites: true,
+    authSource: 'admin',
+    w: 'majority'
+  })
+  .then(() => {
+    console.log('Connected to MongoDB');
+    const PORT = process.env.PORT || 5001;
+    app.listen(PORT, () => {
+      console.log(`Server running on port ${PORT}`);
+    });
+  })
+  .catch((err) => {
+    console.error('Error connecting to MongoDB:', err.message);
+    process.exit(1);
+  });
 
 // Handle unhandled promise rejections
 process.on('unhandledRejection', (err) => {
-  console.error(`Unhandled Rejection: ${err.name} - ${err.message}`);
-  // Close server & exit process
+  console.log('UNHANDLED REJECTION! 💥 Shutting down...');
+  console.error(err.name, err.message);
   process.exit(1);
 }); 
