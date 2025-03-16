@@ -1,3 +1,10 @@
+@font-face {
+  font-family: 'Rekalgera';
+  src: url('./fonts/rekalgera.regular.otf') format('opentype');
+  font-weight: normal;
+  font-style: normal;
+}
+
 /* Base Styles */
 html, body, #root, .app-container {
   height: 100%;
@@ -58,15 +65,24 @@ body, button, input, select, textarea, h1, h2, h3, h4, h5, h6, p, span, div {
 }
 
 .logo {
-  padding: 1.5rem 1rem;
+  padding: 1.5rem 0;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .logo h2 {
   margin: 0;
-  font-size: 1.5rem;
+  font-size: 3rem;
   font-weight: 700;
   color: var(--white);
+}
+
+.logo-text {
+  font-family: 'Rekalgera', sans-serif;
+  font-size: 4rem;
+  color: inherit;
+  margin: 0;
+  padding: 0;
+  padding-left: 1.5rem;
 }
 
 .sidebar-menu {
@@ -1889,47 +1905,60 @@ body, button, input, select, textarea, h1, h2, h3, h4, h5, h6, p, span, div {
   font-family: var(--font-family);
 }
 
-/* Add Plant Card Styles */
+/* Empty Plants Message */
+.empty-plants-message {
+  width: 100%;
+  padding: 2rem;
+  text-align: center;
+  background-color: var(--light-bg);
+  border-radius: 8px;
+  margin: 1rem 0;
+}
+
+.empty-plants-message p {
+  font-size: 1.1rem;
+  color: var(--text-secondary);
+}
+
+/* Add Plant Card */
 .add-plant-card {
-  background-color: rgba(255, 152, 0, 0.1); /* Light orange background */
-  border: 2px dashed #ff9800; /* Orange dashed border */
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  text-align: center;
   cursor: pointer;
-  min-height: 200px; /* Ensure the card has enough height */
-  transition: transform 0.2s, background-color 0.2s, box-shadow 0.2s;
+  background-color: var(--light-bg);
+  transition: all 0.2s ease;
+  border: 2px dashed var(--border-color);
 }
 
 .add-plant-card:hover {
-  background-color: rgba(255, 152, 0, 0.25); /* Slightly darker on hover */
+  background-color: var(--hover-bg);
   transform: translateY(-5px);
-  box-shadow: 0 5px 15px rgba(255, 152, 0, 0.3);
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
 }
 
 .add-plant-icon {
-  width: 100px;
-  height: 100px;
+  width: 60px;
+  height: 60px;
   border-radius: 50%;
-  background-color: rgba(255, 152, 0, 0.2);
+  background-color: var(--primary-color);
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: background-color 0.2s, transform 0.2s;
-}
-
-.add-plant-card:hover .add-plant-icon {
-  background-color: rgba(255, 152, 0, 0.35);
-  transform: scale(1.1);
+  margin-bottom: 1rem;
 }
 
 .plus-icon {
-  font-size: 60px;
-  color: #ff9800;
-  font-weight: 300;
-  line-height: 0.8;
+  font-size: 2rem;
+  color: white;
+  font-weight: bold;
+}
+
+.add-plant-text {
+  font-size: 1.1rem;
+  font-weight: 500;
+  color: var(--primary-color);
 }
 
 /* Blog View Styles */
@@ -2441,11 +2470,4 @@ body, button, input, select, textarea, h1, h2, h3, h4, h5, h6, p, span, div {
   border: 1px solid var(--divider-color);
   color: var(--text-color);
   font-weight: normal;
-}
-
-@font-face {
-  font-family: 'Rekalgera';
-  src: url('./fonts/rekalgera.regular.otf') format('opentype');
-  font-weight: normal;
-  font-style: normal;
 }

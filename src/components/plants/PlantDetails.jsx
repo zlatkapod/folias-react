@@ -24,13 +24,15 @@ function PlantDetails({ plant, onClose, onSave, onDelete }) {
   // Fetch care logs when component mounts
   useEffect(() => {
     async function fetchLogs() {
-      if (!plant || !plant.id) return;
+      // Use _id instead of id for MongoDB documents
+      const plantId = plant?._id || plant?.id;
+      if (!plantId) return;
       
       setIsLoading(true);
       setError(null);
       
       try {
-        const fetchedLogs = await careLogApi.getByPlant(plant.id);
+        const fetchedLogs = await careLogApi.getByPlant(plantId);
         setLogs(fetchedLogs);
       } catch (err) {
         console.error('Error fetching care logs:', err);
@@ -76,9 +78,18 @@ function PlantDetails({ plant, onClose, onSave, onDelete }) {
     setError(null);
     
     try {
-      await plantApi.delete(plant.id);
+      // Use _id instead of id for MongoDB documents
+      const plantId = plant._id || plant.id;
+      
+      if (!plantId) {
+        throw new Error('Plant ID is undefined');
+      }
+      
+      console.log('Deleting plant with ID:', plantId);
+      await plantApi.delete(plantId);
+      
       if (onDelete) {
-        onDelete(plant.id);
+        onDelete(plantId);
       }
       onClose();
     } catch (err) {

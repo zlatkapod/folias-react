@@ -5,17 +5,17 @@ export const configService = {
   getPlantTypes: async () => {
     try {
       const response = await api.get('/config/plant-types');
-      return response.data;
+      return response.data && response.data.data ? response.data.data : [];
     } catch (error) {
       console.error('Error fetching plant types:', error);
-      throw error;
+      return [];
     }
   },
 
   createPlantType: async (typeData) => {
     try {
       const response = await api.post('/config/plant-types', typeData);
-      return response.data;
+      return response.data && response.data.data ? response.data.data : null;
     } catch (error) {
       console.error('Error creating plant type:', error);
       throw error;
@@ -25,7 +25,7 @@ export const configService = {
   updatePlantType: async (id, typeData) => {
     try {
       const response = await api.put(`/config/plant-types/${id}`, typeData);
-      return response.data;
+      return response.data && response.data.data ? response.data.data : null;
     } catch (error) {
       console.error(`Error updating plant type ${id}:`, error);
       throw error;
@@ -35,7 +35,7 @@ export const configService = {
   deletePlantType: async (id) => {
     try {
       const response = await api.delete(`/config/plant-types/${id}`);
-      return response.data;
+      return response.data && response.data.success ? true : false;
     } catch (error) {
       console.error(`Error deleting plant type ${id}:`, error);
       throw error;
@@ -46,17 +46,17 @@ export const configService = {
   getSoilTypes: async () => {
     try {
       const response = await api.get('/config/soil-types');
-      return response.data;
+      return response.data && response.data.data ? response.data.data : [];
     } catch (error) {
       console.error('Error fetching soil types:', error);
-      throw error;
+      return [];
     }
   },
 
   createSoilType: async (typeData) => {
     try {
       const response = await api.post('/config/soil-types', typeData);
-      return response.data;
+      return response.data && response.data.data ? response.data.data : null;
     } catch (error) {
       console.error('Error creating soil type:', error);
       throw error;
@@ -66,7 +66,7 @@ export const configService = {
   updateSoilType: async (id, typeData) => {
     try {
       const response = await api.put(`/config/soil-types/${id}`, typeData);
-      return response.data;
+      return response.data && response.data.data ? response.data.data : null;
     } catch (error) {
       console.error(`Error updating soil type ${id}:`, error);
       throw error;
@@ -76,7 +76,7 @@ export const configService = {
   deleteSoilType: async (id) => {
     try {
       const response = await api.delete(`/config/soil-types/${id}`);
-      return response.data;
+      return response.data && response.data.success ? true : false;
     } catch (error) {
       console.error(`Error deleting soil type ${id}:`, error);
       throw error;
@@ -87,17 +87,17 @@ export const configService = {
   getPotSizes: async () => {
     try {
       const response = await api.get('/config/pot-sizes');
-      return response.data;
+      return response.data && response.data.data ? response.data.data : [];
     } catch (error) {
       console.error('Error fetching pot sizes:', error);
-      throw error;
+      return [];
     }
   },
 
   createPotSize: async (sizeData) => {
     try {
       const response = await api.post('/config/pot-sizes', sizeData);
-      return response.data;
+      return response.data && response.data.data ? response.data.data : null;
     } catch (error) {
       console.error('Error creating pot size:', error);
       throw error;
@@ -107,7 +107,7 @@ export const configService = {
   updatePotSize: async (id, sizeData) => {
     try {
       const response = await api.put(`/config/pot-sizes/${id}`, sizeData);
-      return response.data;
+      return response.data && response.data.data ? response.data.data : null;
     } catch (error) {
       console.error(`Error updating pot size ${id}:`, error);
       throw error;
@@ -117,7 +117,7 @@ export const configService = {
   deletePotSize: async (id) => {
     try {
       const response = await api.delete(`/config/pot-sizes/${id}`);
-      return response.data;
+      return response.data && response.data.success ? true : false;
     } catch (error) {
       console.error(`Error deleting pot size ${id}:`, error);
       throw error;
@@ -128,17 +128,17 @@ export const configService = {
   getLightConditions: async () => {
     try {
       const response = await api.get('/config/light-conditions');
-      return response.data;
+      return response.data && response.data.data ? response.data.data : [];
     } catch (error) {
       console.error('Error fetching light conditions:', error);
-      throw error;
+      return [];
     }
   },
 
   createLightCondition: async (conditionData) => {
     try {
       const response = await api.post('/config/light-conditions', conditionData);
-      return response.data;
+      return response.data && response.data.data ? response.data.data : null;
     } catch (error) {
       console.error('Error creating light condition:', error);
       throw error;
@@ -148,7 +148,7 @@ export const configService = {
   updateLightCondition: async (id, conditionData) => {
     try {
       const response = await api.put(`/config/light-conditions/${id}`, conditionData);
-      return response.data;
+      return response.data && response.data.data ? response.data.data : null;
     } catch (error) {
       console.error(`Error updating light condition ${id}:`, error);
       throw error;
@@ -158,7 +158,7 @@ export const configService = {
   deleteLightCondition: async (id) => {
     try {
       const response = await api.delete(`/config/light-conditions/${id}`);
-      return response.data;
+      return response.data && response.data.success ? true : false;
     } catch (error) {
       console.error(`Error deleting light condition ${id}:`, error);
       throw error;

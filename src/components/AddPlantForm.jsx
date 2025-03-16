@@ -58,25 +58,29 @@ function AddPlantForm({
     e.preventDefault();
     
     // Get plant type details
-    const selectedPlantType = plantTypes.find(p => p.id === parseInt(plantType));
+    const selectedPlantType = plantTypes.find(p => p.id === parseInt(plantType) || p._id === plantType);
     
-    // Create new plant object
+    // Create new plant object with proper field names for MongoDB
     const newPlant = {
-      id: Date.now(),
+      name: nickname.trim() || (selectedPlantType?.name || 'My Plant'),
       type: selectedPlantType ? selectedPlantType.name : 'Unknown',
-      nickname: nickname.trim() || selectedPlantType?.name || 'My Plant',
       room: selectedRoom,
-      lightCondition: lightConditions.find(l => l.id === lightCondition)?.label || 'Not specified',
-      potSize: potSizes.find(p => p.id === potSize)?.label || 'Medium',
-      soilType: soilTypes.find(s => s.id === soilType)?.label || 'Regular Potting Soil',
-      lastWatered: lastWatered,
-      nextWatering: calculateNextWatering(plantType, lastWatered),
-      wateringFrequency: selectedPlantType?.wateringFrequency || 7,
-      additionalNotes: additionalNotes,
+      lightCondition: lightConditions.find(l => l.id === lightCondition || l._id === lightCondition)?.label || 'Medium Light',
+      potSize: potSizes.find(p => p.id === potSize || p._id === potSize)?.label || 'Medium',
+      soilType: soilTypes.find(s => s.id === soilType || s._id === soilType)?.label || 'Regular Potting Soil',
+      lastWatered: new Date(lastWatered),
+      nextWatering: new Date(calculateNextWatering(plantType, lastWatered)),
+      wateringFrequency: selectedPlantType?.wateringFrequency ? 
+        `Every ${selectedPlantType.wateringFrequency} days` : 'Weekly',
+      notes: additionalNotes,
       health: 'Good',
-      imageUrl: imagePreview || null, // In a real app, this would be stored in a server/cloud
-      createdAt: new Date().toISOString(),
+      // In a real app, image would be uploaded to a server/cloud storage
+      // For now, we'll just store the data URL if available
+      imageUrl: imagePreview || null,
+      acquiredDate: new Date(),
     };
+    
+    console.log('Submitting plant data:', newPlant);
     
     // Pass the new plant to parent component
     onAddPlant(newPlant);

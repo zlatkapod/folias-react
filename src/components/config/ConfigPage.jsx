@@ -20,6 +20,7 @@ function ConfigPage({
   // Form states for adding new items
   const [newPlantType, setNewPlantType] = useState({ 
     name: '', 
+    label: '',
     wateringFrequency: 7, 
     lightNeeds: 'Medium', 
     humidityNeeds: 'Medium' 
@@ -42,23 +43,32 @@ function ConfigPage({
     return `${prefix}_${Date.now()}`;
   };
   
+  // Helper to get the ID from an item (works with both MongoDB _id and local id)
+  const getItemId = (item) => {
+    return item._id || item.id;
+  };
+  
   // Handler for adding a new plant type
   const handleAddPlantType = (e) => {
     e.preventDefault();
     if (!newPlantType.name) return;
     
-    const updatedPlantTypes = [
-      ...plantTypes,
-      {
-        ...newPlantType,
-        id: plantTypes.length > 0 ? Math.max(...plantTypes.map(p => p.id)) + 1 : 1
-      }
-    ];
+    // Format data for MongoDB - use the same structure as the Configuration model
+    const plantTypeData = {
+      id: plantTypes.length > 0 ? Math.max(...plantTypes.map(p => parseInt(p.id) || 0)) + 1 : 1,
+      label: newPlantType.name,
+      name: newPlantType.name,
+      wateringFrequency: newPlantType.wateringFrequency,
+      lightNeeds: newPlantType.lightNeeds,
+      humidityNeeds: newPlantType.humidityNeeds
+    };
     
+    const updatedPlantTypes = [...plantTypes, plantTypeData];
     setPlantTypes(updatedPlantTypes);
     onSavePlantTypes(updatedPlantTypes);
     setNewPlantType({ 
       name: '', 
+      label: '',
       wateringFrequency: 7, 
       lightNeeds: 'Medium', 
       humidityNeeds: 'Medium' 
@@ -70,7 +80,13 @@ function ConfigPage({
     e.preventDefault();
     if (!newSoilType.id || !newSoilType.label) return;
     
-    const updatedSoilTypes = [...soilTypes, newSoilType];
+    // Format data for MongoDB - use the same structure as the Configuration model
+    const soilTypeData = {
+      id: newSoilType.id,
+      label: newSoilType.label
+    };
+    
+    const updatedSoilTypes = [...soilTypes, soilTypeData];
     setSoilTypes(updatedSoilTypes);
     onSaveSoilTypes(updatedSoilTypes);
     setNewSoilType({ id: '', label: '' });
@@ -81,7 +97,13 @@ function ConfigPage({
     e.preventDefault();
     if (!newPotSize.id || !newPotSize.label) return;
     
-    const updatedPotSizes = [...potSizes, newPotSize];
+    // Format data for MongoDB - use the same structure as the Configuration model
+    const potSizeData = {
+      id: newPotSize.id,
+      label: newPotSize.label
+    };
+    
+    const updatedPotSizes = [...potSizes, potSizeData];
     setPotSizes(updatedPotSizes);
     onSavePotSizes(updatedPotSizes);
     setNewPotSize({ id: '', label: '' });
@@ -92,7 +114,13 @@ function ConfigPage({
     e.preventDefault();
     if (!newLightCondition.id || !newLightCondition.label) return;
     
-    const updatedLightConditions = [...lightConditions, newLightCondition];
+    // Format data for MongoDB - use the same structure as the Configuration model
+    const lightConditionData = {
+      id: newLightCondition.id,
+      label: newLightCondition.label
+    };
+    
+    const updatedLightConditions = [...lightConditions, lightConditionData];
     setLightConditions(updatedLightConditions);
     onSaveLightConditions(updatedLightConditions);
     setNewLightCondition({ id: '', label: '' });
@@ -100,28 +128,28 @@ function ConfigPage({
   
   // Handler for removing a plant type
   const handleRemovePlantType = (id) => {
-    const updatedPlantTypes = plantTypes.filter(plant => plant.id !== id);
+    const updatedPlantTypes = plantTypes.filter(plant => getItemId(plant) !== id);
     setPlantTypes(updatedPlantTypes);
     onSavePlantTypes(updatedPlantTypes);
   };
   
   // Handler for removing a soil type
   const handleRemoveSoilType = (id) => {
-    const updatedSoilTypes = soilTypes.filter(soil => soil.id !== id);
+    const updatedSoilTypes = soilTypes.filter(soil => getItemId(soil) !== id);
     setSoilTypes(updatedSoilTypes);
     onSaveSoilTypes(updatedSoilTypes);
   };
   
   // Handler for removing a pot size
   const handleRemovePotSize = (id) => {
-    const updatedPotSizes = potSizes.filter(size => size.id !== id);
+    const updatedPotSizes = potSizes.filter(size => getItemId(size) !== id);
     setPotSizes(updatedPotSizes);
     onSavePotSizes(updatedPotSizes);
   };
   
   // Handler for removing a light condition
   const handleRemoveLightCondition = (id) => {
-    const updatedLightConditions = lightConditions.filter(light => light.id !== id);
+    const updatedLightConditions = lightConditions.filter(light => getItemId(light) !== id);
     setLightConditions(updatedLightConditions);
     onSaveLightConditions(updatedLightConditions);
   };
@@ -129,8 +157,15 @@ function ConfigPage({
   // Handler for updating a plant type (in-place editing)
   const handleUpdatePlantType = (id, field, value) => {
     const updatedPlantTypes = plantTypes.map(plant => {
-      if (plant.id === id) {
-        return { ...plant, [field]: value };
+      if (getItemId(plant) === id) {
+        const updatedPlant = { ...plant, [field]: value };
+        
+        // If name is updated, also update label to keep them in sync
+        if (field === 'name') {
+          updatedPlant.label = value;
+        }
+        
+        return updatedPlant;
       }
       return plant;
     });
@@ -190,12 +225,12 @@ function ConfigPage({
                 </thead>
                 <tbody>
                   {plantTypes.map(plant => (
-                    <tr key={plant.id}>
+                    <tr key={getItemId(plant)}>
                       <td>
                         <input 
                           type="text" 
                           value={plant.name} 
-                          onChange={(e) => handleUpdatePlantType(plant.id, 'name', e.target.value)}
+                          onChange={(e) => handleUpdatePlantType(getItemId(plant), 'name', e.target.value)}
                           className="edit-input table-input"
                         />
                       </td>
@@ -203,7 +238,7 @@ function ConfigPage({
                         <input 
                           type="number" 
                           value={plant.wateringFrequency} 
-                          onChange={(e) => handleUpdatePlantType(plant.id, 'wateringFrequency', parseInt(e.target.value))}
+                          onChange={(e) => handleUpdatePlantType(getItemId(plant), 'wateringFrequency', parseInt(e.target.value))}
                           min="1"
                           max="30"
                           className="edit-input table-input"
@@ -212,7 +247,7 @@ function ConfigPage({
                       <td>
                         <select 
                           value={plant.lightNeeds} 
-                          onChange={(e) => handleUpdatePlantType(plant.id, 'lightNeeds', e.target.value)}
+                          onChange={(e) => handleUpdatePlantType(getItemId(plant), 'lightNeeds', e.target.value)}
                           className="edit-select table-input"
                         >
                           <option value="Low">Low</option>
@@ -225,7 +260,7 @@ function ConfigPage({
                       <td>
                         <select 
                           value={plant.humidityNeeds} 
-                          onChange={(e) => handleUpdatePlantType(plant.id, 'humidityNeeds', e.target.value)}
+                          onChange={(e) => handleUpdatePlantType(getItemId(plant), 'humidityNeeds', e.target.value)}
                           className="edit-select table-input"
                         >
                           <option value="Low">Low</option>
@@ -235,7 +270,7 @@ function ConfigPage({
                       </td>
                       <td>
                         <button 
-                          onClick={() => handleRemovePlantType(plant.id)}
+                          onClick={() => handleRemovePlantType(getItemId(plant))}
                           className="action-btn delete small"
                         >
                           Remove
@@ -336,12 +371,12 @@ function ConfigPage({
                 </thead>
                 <tbody>
                   {soilTypes.map(soil => (
-                    <tr key={soil.id}>
-                      <td className="table-cell">{soil.id}</td>
+                    <tr key={getItemId(soil)}>
+                      <td className="table-cell">{getItemId(soil)}</td>
                       <td className="table-cell">{soil.label}</td>
                       <td>
                         <button 
-                          onClick={() => handleRemoveSoilType(soil.id)}
+                          onClick={() => handleRemoveSoilType(getItemId(soil))}
                           className="action-btn delete small"
                         >
                           Remove
@@ -409,12 +444,12 @@ function ConfigPage({
                 </thead>
                 <tbody>
                   {potSizes.map(size => (
-                    <tr key={size.id}>
-                      <td className="table-cell">{size.id}</td>
+                    <tr key={getItemId(size)}>
+                      <td className="table-cell">{getItemId(size)}</td>
                       <td className="table-cell">{size.label}</td>
                       <td>
                         <button 
-                          onClick={() => handleRemovePotSize(size.id)}
+                          onClick={() => handleRemovePotSize(getItemId(size))}
                           className="action-btn delete small"
                         >
                           Remove
@@ -482,12 +517,12 @@ function ConfigPage({
                 </thead>
                 <tbody>
                   {lightConditions.map(light => (
-                    <tr key={light.id}>
-                      <td className="table-cell">{light.id}</td>
+                    <tr key={getItemId(light)}>
+                      <td className="table-cell">{getItemId(light)}</td>
                       <td className="table-cell">{light.label}</td>
                       <td>
                         <button 
-                          onClick={() => handleRemoveLightCondition(light.id)}
+                          onClick={() => handleRemoveLightCondition(getItemId(light))}
                           className="action-btn delete small"
                         >
                           Remove
